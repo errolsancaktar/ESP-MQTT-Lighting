@@ -63,101 +63,95 @@ PubSubClientTools mqtt(client);
 
 
 void callback(char* topic, byte* payload, unsigned int length) {
-  
-    StaticJsonDocument<400> jsonpl;
 
-    deserializeJson(jsonpl,payload,length);
-    JsonObject data = jsonpl.as<JsonObject>();
-    brightness = data["brightness"];
-    r = data["rgb_color"][0];
-    g = data["rgb_color"][1];
-    b = data["rgb_color"][2];
-    w = data["white_value"];
-    String effect = data["effect"];
-    
-    if(setColor(r,g,b,w,brightness)){
-      mqtt.publish(baseTopic + "brightness",String(brightness),true);
-      mqtt.publish(baseTopic + "effect",effect,true);
-      mqtt.publish(baseTopic + "white_value",String(w),true);
-      String rgbcolor = "[" + String(r) + "," + String(g) + "," + String(b) + "]";
-      mqtt.publish(baseTopic + "rgb_color",rgbcolor,true);
-      }
+  StaticJsonDocument<400> jsonpl;
+
+  deserializeJson(jsonpl, payload, length);
+  JsonObject data = jsonpl.as<JsonObject>();
+  brightness = data["brightness"];
+  r = data["rgb_color"][0];
+  g = data["rgb_color"][1];
+  b = data["rgb_color"][2];
+  w = data["white_value"];
+  String effect = data["effect"];
+
+  if (setColor(r, g, b, w, brightness)) {
+    mqtt.publish(baseTopic + "brightness", String(brightness), true);
+    mqtt.publish(baseTopic + "effect", effect, true);
+    mqtt.publish(baseTopic + "white_value", String(w), true);
+    String rgbcolor = "[" + String(r) + "," + String(g) + "," + String(b) + "]";
+    mqtt.publish(baseTopic + "rgb_color", rgbcolor, true);
+  }
 }
 
 boolean reconnect() {
-    topic = baseTopic + "status";
-    topic.toCharArray(charBuf,50);
-    //clientName.toCharArray(nameBuf,50);
-    Serial.println(charBuf);
-    if (client.connect(clientName, MQTT_USER, MQTT_PASS,charBuf,2,1,"offline")) {
-      client.publish(charBuf,"online", true);
-      topic = baseTopic + "ip";
-      topic.toCharArray(charBuf,50);
-      client.publish(charBuf,ipAdd,true);
-      topic = baseTopic + "mac";
-      topic.toCharArray(charBuf,50);
-      client.publish(charBuf,macAdd,true);
-      lastReconnectAttempt = 0;
+  if (client.connect(clientName, MQTT_USER, MQTT_PASS, statusTopic, 1, 1, "offline")) {
+
+    mqtt.publish(baseTopic + "status", "online", true);
+    mqtt.publish(baseTopic + "ip", ipAdd, true);
+    mqtt.publish(baseTopic + "mac", macAdd, true);
+    lastReconnectAttempt = 0;
+    return client.connected();
   }
-  return client.connected();
 }
 
-bool setColor(int r,int g,int b,int w,int brightness){
-  r = r * brightness / 100;
-  g = g * brightness / 100;
-  b = b * brightness / 100;
-  w = w * brightness / 100;
-  analogWrite(REDPIN,r);
-  analogWrite(GREENPIN,g);
-  analogWrite(BLUEPIN,b);
-  analogWrite(WHITEPIN,w);
+bool setColor(int r, int g, int b, int w, int brightness) {
+    r = r * brightness / 100;
+    g = g * brightness / 100;
+    b = b * brightness / 100;
+    w = w * brightness / 100;
+    analogWrite(REDPIN, r);
+    analogWrite(GREENPIN, g);
+    analogWrite(BLUEPIN, b);
+    analogWrite(WHITEPIN, w);
+    return true;
 }
 
-void white(){
-    analogWrite(REDPIN,0);
-    analogWrite(GREENPIN,0);
-    analogWrite(BLUEPIN,0);
-    analogWrite(WHITEPIN, 255);
-  }
+void white() {
+  analogWrite(REDPIN, 0);
+  analogWrite(GREENPIN, 0);
+  analogWrite(BLUEPIN, 0);
+  analogWrite(WHITEPIN, 255);
+}
 
-void red(){
-    analogWrite(REDPIN,255);
-    analogWrite(GREENPIN,0);
-    analogWrite(BLUEPIN,0);
-    analogWrite(WHITEPIN, 0);
-  }
+void red() {
+  analogWrite(REDPIN, 255);
+  analogWrite(GREENPIN, 0);
+  analogWrite(BLUEPIN, 0);
+  analogWrite(WHITEPIN, 0);
+}
 
-void green(){
-    analogWrite(REDPIN,0);
-    analogWrite(GREENPIN,255);
-    analogWrite(BLUEPIN,0);
-    analogWrite(WHITEPIN, 0);
-  }
+void green() {
+  analogWrite(REDPIN, 0);
+  analogWrite(GREENPIN, 255);
+  analogWrite(BLUEPIN, 0);
+  analogWrite(WHITEPIN, 0);
+}
 
-void blue(){
-    analogWrite(REDPIN,0);
-    analogWrite(GREENPIN,0);
-    analogWrite(BLUEPIN,255);
-    analogWrite(WHITEPIN, 0);
-  }
+void blue() {
+  analogWrite(REDPIN, 0);
+  analogWrite(GREENPIN, 0);
+  analogWrite(BLUEPIN, 255);
+  analogWrite(WHITEPIN, 0);
+}
 
-void turnOff(){
-    analogWrite(REDPIN,0);
-    analogWrite(GREENPIN,0);
-    analogWrite(BLUEPIN,0);
-    analogWrite(WHITEPIN, 0);
-  }
+void turnOff() {
+  analogWrite(REDPIN, 0);
+  analogWrite(GREENPIN, 0);
+  analogWrite(BLUEPIN, 0);
+  analogWrite(WHITEPIN, 0);
+}
 
 
-void handleLight(){
-    if (server.arg("color")== ""){     //Parameter not found
-    server.send(200, "text/plain","Nothing");
-    }else{     //Parameter found
+void handleLight() {
+  if (server.arg("color") == "") {   //Parameter not found
+    server.send(200, "text/plain", "Nothing");
+  } else {    //Parameter found
 
-    
+
     int test = server.arg("color").toInt();
-    server.send(200,"text/plain",server.arg("color"));
-    switch(test){
+    server.send(200, "text/plain", server.arg("color"));
+    switch (test) {
       case 1:
         white();
         break;
@@ -174,80 +168,97 @@ void handleLight(){
         turnOff();
         break;
     }
-    server.sendHeader("Location","/");
-    }
-    
-    
+    server.sendHeader("Location", "/");
   }
 
+
+}
+
+bool checkState() {
+  if (r > 0 || g > 0 || b > 0 || w > 0) {
+    mqtt.publish(baseTopic + "state", "ON", true);
+  } else {
+    mqtt.publish(baseTopic + "state", "OFF", true);
+  }
+}
 
 //##//##//##//##  Setup
 
 void setup() {
-    // put your setup code here, to run once:
-    Serial.begin(115200);
-    Serial.println("starting Setup");
+  // put your setup code here, to run once:
+  Serial.begin(115200);
+  Serial.println("starting Setup");
 
-    //Setup LED Pins
-    pinMode(REDPIN,OUTPUT);
-    pinMode(GREENPIN,OUTPUT);
-    pinMode(BLUEPIN,OUTPUT);
-    pinMode(WHITEPIN,OUTPUT);
+  //Setup LED Pins
+  pinMode(REDPIN, OUTPUT);
+  pinMode(GREENPIN, OUTPUT);
+  pinMode(BLUEPIN, OUTPUT);
+  pinMode(WHITEPIN, OUTPUT);
 
-    //WiFiManager
-    //Local intialization. Once its business is done, there is no need to keep it around
-    WiFiManager wifiManager;
-    //reset saved settings
-    //wifiManager.resetSettings();
-    
-    //set custom ip for portal
-    //wifiManager.setAPStaticIPConfig(IPAddress(10,0,1,1), IPAddress(10,0,1,1), IPAddress(255,255,255,0));
+  //WiFiManager
+  //Local intialization. Once its business is done, there is no need to keep it around
+  WiFiManager wifiManager;
+  //reset saved settings
+  //wifiManager.resetSettings();
 
-    //fetches ssid and pass from eeprom and tries to connect
-    //if it does not connect it starts an access point with the specified name
-    //here  "AutoConnectAP"
-    //and goes into a blocking loop awaiting configuration
-    wifiManager.autoConnect("AutoConnectAP");
-    //or use this for auto generated name ESP + ChipID
-    //wifiManager.autoConnect();
+  //set custom ip for portal
+  //wifiManager.setAPStaticIPConfig(IPAddress(10,0,1,1), IPAddress(10,0,1,1), IPAddress(255,255,255,0));
 
-    
-    //if you get here you have connected to the WiFi
-    Serial.println("connected...winning :)");
-    ip = WiFi.localIP().toString();
-    ip.toCharArray(ipAdd,20);
-    mac = WiFi.macAddress();
-    mac.toCharArray(macAdd,30);
-    
+  //fetches ssid and pass from eeprom and tries to connect
+  //if it does not connect it starts an access point with the specified name
+  //here  "AutoConnectAP"
+  //and goes into a blocking loop awaiting configuration
+  wifiManager.autoConnect("AutoConnectAP");
+  //or use this for auto generated name ESP + ChipID
+  //wifiManager.autoConnect();
 
-//init webota
-    webota.init(8080, "/update");    
-// Wait for connection
-    while (WiFi.status() != WL_CONNECTED) {
+
+  //if you get here you have connected to the WiFi
+  Serial.println("connected...winning :)");
+  ip = WiFi.localIP().toString();
+  ip.toCharArray(ipAdd, 20);
+  mac = WiFi.macAddress();
+  mac.toCharArray(macAdd, 30);
+
+
+  //init webota
+  webota.init(8080, "/update");
+  // Wait for connection
+  while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
-    }
-    if (MDNS.begin("esp8266")) {
+  }
+  if (MDNS.begin("esp8266")) {
     Serial.println("MDNS responder started");
     server.on("/cmd", handleLight);
     server.on("/", handleRoot);
     server.onNotFound(handleNotFound);
 
     server.begin();
-    Serial.println("HTTP server started");    
-    }
-// Initial MQTT Setup
-    reconnect();
-    client.setCallback(callback);
+    Serial.println("HTTP server started");
+  }
+
+  // set LWT
+  baseTopic.toCharArray(statusTopic,30);
+  strcat(statusTopic, "status");
+  
+  // Initial MQTT Setup
+  client.connect(clientName, MQTT_USER, MQTT_PASS, statusTopic, 1, 1, "offline");
+  mqtt.publish(baseTopic + "status", "online", true);
+  mqtt.publish(baseTopic + "ip", ipAdd, true);
+  mqtt.publish(baseTopic + "mac", macAdd, true);
+
+  // Define Callback func
+  client.setCallback(callback);
 
 
-// Subscribe to MQTT Set Topic
-    client.subscribe("home/Cabinetlights/set");
+  // Subscribe to MQTT Set Topic
+  client.subscribe("home/Cabinetlights/set");
 }
 
 void loop() {
 
-    if (!client.connected()) {
+  if (!client.connected()) {
     long now = millis();
     if (now - lastReconnectAttempt > 5000) {
       lastReconnectAttempt = now;
@@ -255,27 +266,28 @@ void loop() {
       if (reconnect()) {
         lastReconnectAttempt = 0;
       }
+      String UTtopic = baseTopic + "uptime";
+      uptime = millis();
+      itoa(uptime, msg, 10);
+      UTtopic.toCharArray(charBuf, 50);
+      client.publish(charBuf, msg);
     }
   } else {
     // Client connected
-    client.loop();   
+    client.loop();
   }
 
-  
 
-    webota.handle();
-    server.handleClient();
-    MDNS.update();    
-    String UTtopic = baseTopic + "uptime";
-    uptime = millis();
-    itoa(uptime,msg,10);
-    UTtopic.toCharArray(charBuf,50);
-    client.publish(charBuf, msg); 
-    if (uptime > 4000000000) {
-      topic = baseTopic + "/INFO";
-      topic.toCharArray(charBuf,50);
-      client.publish(charBuf,"Restart",true);
-      ESP.restart();
-    }
+
+  webota.handle();
+  server.handleClient();
+  MDNS.update();
+  checkState();
+
+  if (uptime > 4000000000) {
+    topic = baseTopic + "/INFO";
+    topic.toCharArray(charBuf, 50);
+    client.publish(charBuf, "Restart", true);
+    ESP.restart();
+  }
 }
-    
