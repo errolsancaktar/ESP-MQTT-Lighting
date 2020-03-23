@@ -30,8 +30,6 @@ void handleRoot() {
   htmlmsg += "Red: " + String(r) + "<BR>Green: " + String(g) + "<BR>Blue: " + String(b) + "<BR>White: " + String(w);
   htmlmsg += "</BODY></HTML>";
   htmlmsg += "<BR>";
-  htmlmsg += "<H1>Current effect: </H1>";
-  htmlmsg += effect;
   htmlmsg += "</BODY></HTML>";
   htmlmsg += "<BR>";
 
@@ -64,23 +62,44 @@ PubSubClientTools mqtt(client);
 
 void callback(char* topic, byte* payload, unsigned int length) {
 
+  r = 0;
+  g = 0;
+  b = 0;
+  w = 255;
+  if(brightness >= 0){
+    brightness = brightness;
+  }else{
+    brightness = 100;
+  }
   StaticJsonDocument<400> jsonpl;
-
   deserializeJson(jsonpl, payload, length);
   JsonObject data = jsonpl.as<JsonObject>();
-  brightness = data["brightness"];
-  r = data["rgb_color"][0];
-  g = data["rgb_color"][1];
-  b = data["rgb_color"][2];
-  w = data["white_value"];
-  String effect = data["effect"];
-
-  if (setColor(r, g, b, w, brightness)) {
-    mqtt.publish(baseTopic + "brightness", String(brightness), true);
-    mqtt.publish(baseTopic + "effect", effect, true);
-    mqtt.publish(baseTopic + "white_value", String(w), true);
-    String rgbcolor = "[" + String(r) + "," + String(g) + "," + String(b) + "]";
-    mqtt.publish(baseTopic + "rgb_color", rgbcolor, true);
+  if(data.containsKey("state")){
+    (String)state = data["state"].as<String>();
+  }
+  if(data.containsKey("brightness")){
+    brightness = data["brightness"];
+    checkState();
+  }
+  if(data.containsKey("rgb")){
+    r = data["rgb"][0];
+    g = data["rgb"][1];
+    b = data["rgb"][2];
+    checkState();
+  }
+  if(data.containsKey("white_value")){
+    w = data["white_value"];
+    checkState();
+  }
+if(state == "ON"){
+    if (setColor(r, g, b, w, brightness)) {
+      mqtt.publish(baseTopic + "brightness", String(brightness), true);
+      mqtt.publish(baseTopic + "white_value", String(w), true);
+      String rgbcolor = "[" + String(r) + "," + String(g) + "," + String(b) + "]";
+      mqtt.publish(baseTopic + "rgb", rgbcolor, true);
+    }
+  }else{
+    turnOff();
   }
 }
 
@@ -104,35 +123,8 @@ bool setColor(int r, int g, int b, int w, int brightness) {
     analogWrite(GREENPIN, g);
     analogWrite(BLUEPIN, b);
     analogWrite(WHITEPIN, w);
+    state = "ON";
     return true;
-}
-
-void white() {
-  analogWrite(REDPIN, 0);
-  analogWrite(GREENPIN, 0);
-  analogWrite(BLUEPIN, 0);
-  analogWrite(WHITEPIN, 255);
-}
-
-void red() {
-  analogWrite(REDPIN, 255);
-  analogWrite(GREENPIN, 0);
-  analogWrite(BLUEPIN, 0);
-  analogWrite(WHITEPIN, 0);
-}
-
-void green() {
-  analogWrite(REDPIN, 0);
-  analogWrite(GREENPIN, 255);
-  analogWrite(BLUEPIN, 0);
-  analogWrite(WHITEPIN, 0);
-}
-
-void blue() {
-  analogWrite(REDPIN, 0);
-  analogWrite(GREENPIN, 0);
-  analogWrite(BLUEPIN, 255);
-  analogWrite(WHITEPIN, 0);
 }
 
 void turnOff() {
@@ -149,21 +141,9 @@ void handleLight() {
   } else {    //Parameter found
 
 
-    int test = server.arg("color").toInt();
-    server.send(200, "text/plain", server.arg("color"));
+    int test = server.arg("c").toInt();
+    server.send(200, "text/plain", server.arg("c"));
     switch (test) {
-      case 1:
-        white();
-        break;
-      case 2:
-        red();
-        break;
-      case 3:
-        green();
-        break;
-      case 4:
-        blue();
-        break;
       case 5:
         turnOff();
         break;
@@ -177,9 +157,12 @@ void handleLight() {
 bool checkState() {
   if (r > 0 || g > 0 || b > 0 || w > 0) {
     mqtt.publish(baseTopic + "state", "ON", true);
+    state = "ON";
   } else {
     mqtt.publish(baseTopic + "state", "OFF", true);
+    state = "OFF";
   }
+return true;
 }
 
 //##//##//##//##  Setup
