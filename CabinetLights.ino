@@ -66,11 +66,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   g = 0;
   b = 0;
   w = 255;
-  if(brightness >= 0){
-    brightness = brightness;
-  }else{
-    brightness = 100;
-  }
+  brightness = 100;
   StaticJsonDocument<400> jsonpl;
   deserializeJson(jsonpl, payload, length);
   JsonObject data = jsonpl.as<JsonObject>();
