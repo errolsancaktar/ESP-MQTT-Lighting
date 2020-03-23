@@ -30,6 +30,8 @@ void handleRoot() {
   htmlmsg += "Red: " + String(r) + "<BR>Green: " + String(g) + "<BR>Blue: " + String(b) + "<BR>White: " + String(w);
   htmlmsg += "</BODY></HTML>";
   htmlmsg += "<BR>";
+  htmlmsg += "State: " + state;
+  htmlmsg += "<BR>";
   htmlmsg += "</BODY></HTML>";
   htmlmsg += "<BR>";
 
@@ -62,40 +64,36 @@ PubSubClientTools mqtt(client);
 
 void callback(char* topic, byte* payload, unsigned int length) {
 
-  r = 0;
-  g = 0;
-  b = 0;
-  w = 255;
-  brightness = 100;
   StaticJsonDocument<400> jsonpl;
   deserializeJson(jsonpl, payload, length);
   JsonObject data = jsonpl.as<JsonObject>();
   if(data.containsKey("state")){
-    (String)state = data["state"].as<String>();
+    state = data["state"].as<String>();
+    if(state == "ON"){
+      w = 255;
+      brightness = 100;
+    }
   }
   if(data.containsKey("brightness")){
     brightness = data["brightness"];
-    checkState();
   }
   if(data.containsKey("rgb")){
     r = data["rgb"][0];
     g = data["rgb"][1];
     b = data["rgb"][2];
-    checkState();
   }
   if(data.containsKey("white_value")){
     w = data["white_value"];
-    checkState();
   }
-if(state == "ON"){
+  if(state == "OFF"){
+    turnOff();
+  }else if(state == "ON"){
     if (setColor(r, g, b, w, brightness)) {
       mqtt.publish(baseTopic + "brightness", String(brightness), true);
       mqtt.publish(baseTopic + "white_value", String(w), true);
       String rgbcolor = "[" + String(r) + "," + String(g) + "," + String(b) + "]";
       mqtt.publish(baseTopic + "rgb", rgbcolor, true);
     }
-  }else{
-    turnOff();
   }
 }
 
@@ -108,19 +106,19 @@ boolean reconnect() {
     lastReconnectAttempt = 0;
     return client.connected();
   }
+  return client.connected();
 }
 
 bool setColor(int r, int g, int b, int w, int brightness) {
-    r = r * brightness / 100;
-    g = g * brightness / 100;
-    b = b * brightness / 100;
-    w = w * brightness / 100;
-    analogWrite(REDPIN, r);
-    analogWrite(GREENPIN, g);
-    analogWrite(BLUEPIN, b);
-    analogWrite(WHITEPIN, w);
-    state = "ON";
-    return true;
+  r = r * brightness / 100;
+  g = g * brightness / 100;
+  b = b * brightness / 100;
+  w = w * brightness / 100;
+  analogWrite(REDPIN, r);
+  analogWrite(GREENPIN, g);
+  analogWrite(BLUEPIN, b);
+  analogWrite(WHITEPIN, w);
+  return true;
 }
 
 void turnOff() {
@@ -128,11 +126,13 @@ void turnOff() {
   analogWrite(GREENPIN, 0);
   analogWrite(BLUEPIN, 0);
   analogWrite(WHITEPIN, 0);
+  brightness = 0;
+  checkState();
 }
 
 
 void handleLight() {
-  if (server.arg("color") == "") {   //Parameter not found
+  if (server.arg("c") == "") {   //Parameter not found
     server.send(200, "text/plain", "Nothing");
   } else {    //Parameter found
 
@@ -141,8 +141,8 @@ void handleLight() {
     server.send(200, "text/plain", server.arg("c"));
     switch (test) {
       case 5:
-        turnOff();
-        break;
+      turnOff();
+      break;
     }
     server.sendHeader("Location", "/");
   }
@@ -158,7 +158,7 @@ bool checkState() {
     mqtt.publish(baseTopic + "state", "OFF", true);
     state = "OFF";
   }
-return true;
+  return true;
 }
 
 //##//##//##//##  Setup
@@ -230,9 +230,9 @@ void setup() {
   // Define Callback func
   client.setCallback(callback);
 
-
   // Subscribe to MQTT Set Topic
   client.subscribe("home/Cabinetlights/set");
+  state = "OFF";
 }
 
 void loop() {
