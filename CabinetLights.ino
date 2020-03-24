@@ -9,7 +9,7 @@
 #include <ESP8266WiFi.h>          //https://github.com/esp8266/Arduino
 #include <ESP8266mDNS.h>
 #include <ArduinoJson.h>
-#include <ArduinoOTA.h>
+#include <WebOTA.h>
 #include "config.h"
 
 
@@ -30,8 +30,8 @@ void handleRoot() {
   htmlmsg += "Red: " + String(r) + "<BR>Green: " + String(g) + "<BR>Blue: " + String(b) + "<BR>White: " + String(w);
   htmlmsg += "</BODY></HTML>";
   htmlmsg += "<BR>";
-  htmlmsg += "<H1>Current effect: </H1>";
-  htmlmsg += effect;
+  htmlmsg += "State: " + (String)state;
+  htmlmsg += "<BR>";
   htmlmsg += "</BODY></HTML>";
   htmlmsg += "<BR>";
 
@@ -65,74 +65,65 @@ PubSubClientTools mqtt(client);
 void callback(char* topic, byte* payload, unsigned int length) {
 
   StaticJsonDocument<400> jsonpl;
-
   deserializeJson(jsonpl, payload, length);
   JsonObject data = jsonpl.as<JsonObject>();
-  brightness = data["brightness"];
-  r = data["rgb_color"][0];
-  g = data["rgb_color"][1];
-  b = data["rgb_color"][2];
-  w = data["white_value"];
-  String effect = data["effect"];
-
-  if (setColor(r, g, b, w, brightness)) {
-    mqtt.publish(baseTopic + "brightness", String(brightness), true);
-    mqtt.publish(baseTopic + "effect", effect, true);
-    mqtt.publish(baseTopic + "white_value", String(w), true);
-    String rgbcolor = "[" + String(r) + "," + String(g) + "," + String(b) + "]";
-    mqtt.publish(baseTopic + "rgb_color", rgbcolor, true);
+  if(data.containsKey("state")){
+    state = data["state"].as<String>();
+    if(state == "ON"){
+      r = 0;
+      g = 0;
+      b = 0;
+      w = 255;
+      brightness = 100;
+    }
+  }
+  if(data.containsKey("brightness")){
+    brightness = data["brightness"];
+  }
+  if(data.containsKey("rgb")){
+    r = data["rgb"][0];
+    g = data["rgb"][1];
+    b = data["rgb"][2];
+  }
+  if(data.containsKey("white_value")){
+    w = data["white_value"];
+  }
+  if(state == "OFF"){
+    turnOff();
+    publishStatus(baseTopic + "info","online","OFF",0,0,0,0,0);
+  }else if(state == "ON"){
+    if (setColor(r, g, b, w, brightness)) {
+      //mqtt.publish(baseTopic + "brightness", String(brightness), true);
+      //mqtt.publish(baseTopic + "white_value", String(w), true);
+      //String rgbcolor = "[" + String(r) + "," + String(g) + "," + String(b) + "]";
+      //mqtt.publish(baseTopic + "rgb", rgbcolor, true);
+      publishStatus(baseTopic + "info","online",state,r,g,b,w,brightness);
+    }
   }
 }
 
 boolean reconnect() {
   if (client.connect(clientName, MQTT_USER, MQTT_PASS, statusTopic, 1, 1, "offline")) {
 
-    mqtt.publish(baseTopic + "status", "online", true);
+    //mqtt.publish(baseTopic + "status", "online", true);
     mqtt.publish(baseTopic + "ip", ipAdd, true);
     mqtt.publish(baseTopic + "mac", macAdd, true);
     lastReconnectAttempt = 0;
     return client.connected();
   }
+  return client.connected();
 }
 
 bool setColor(int r, int g, int b, int w, int brightness) {
-    r = r * brightness / 100;
-    g = g * brightness / 100;
-    b = b * brightness / 100;
-    w = w * brightness / 100;
-    analogWrite(REDPIN, r);
-    analogWrite(GREENPIN, g);
-    analogWrite(BLUEPIN, b);
-    analogWrite(WHITEPIN, w);
-    return true;
-}
-
-void white() {
-  analogWrite(REDPIN, 0);
-  analogWrite(GREENPIN, 0);
-  analogWrite(BLUEPIN, 0);
-  analogWrite(WHITEPIN, 255);
-}
-
-void red() {
-  analogWrite(REDPIN, 255);
-  analogWrite(GREENPIN, 0);
-  analogWrite(BLUEPIN, 0);
-  analogWrite(WHITEPIN, 0);
-}
-
-void green() {
-  analogWrite(REDPIN, 0);
-  analogWrite(GREENPIN, 255);
-  analogWrite(BLUEPIN, 0);
-  analogWrite(WHITEPIN, 0);
-}
-
-void blue() {
-  analogWrite(REDPIN, 0);
-  analogWrite(GREENPIN, 0);
-  analogWrite(BLUEPIN, 255);
-  analogWrite(WHITEPIN, 0);
+  r = r * brightness / 100;
+  g = g * brightness / 100;
+  b = b * brightness / 100;
+  w = w * brightness / 100;
+  analogWrite(REDPIN, r);
+  analogWrite(GREENPIN, g);
+  analogWrite(BLUEPIN, b);
+  analogWrite(WHITEPIN, w);
+  return true;
 }
 
 void turnOff() {
@@ -140,33 +131,23 @@ void turnOff() {
   analogWrite(GREENPIN, 0);
   analogWrite(BLUEPIN, 0);
   analogWrite(WHITEPIN, 0);
+  brightness = 0;
+  checkState();
 }
 
 
 void handleLight() {
-  if (server.arg("color") == "") {   //Parameter not found
+  if (server.arg("c") == "") {   //Parameter not found
     server.send(200, "text/plain", "Nothing");
   } else {    //Parameter found
 
 
-    int test = server.arg("color").toInt();
-    server.send(200, "text/plain", server.arg("color"));
+    int test = server.arg("c").toInt();
+    server.send(200, "text/plain", server.arg("c"));
     switch (test) {
-      case 1:
-        white();
-        break;
-      case 2:
-        red();
-        break;
-      case 3:
-        green();
-        break;
-      case 4:
-        blue();
-        break;
       case 5:
-        turnOff();
-        break;
+      turnOff();
+      break;
     }
     server.sendHeader("Location", "/");
   }
@@ -176,10 +157,27 @@ void handleLight() {
 
 bool checkState() {
   if (r > 0 || g > 0 || b > 0 || w > 0) {
-    mqtt.publish(baseTopic + "state", "ON", true);
+    state = "ON";
   } else {
-    mqtt.publish(baseTopic + "state", "OFF", true);
+    state = "OFF";
   }
+  return true;
+}
+
+bool publishStatus(String topic, String pubStatus, String pubState, int pubR, int pubG, int pubB, int pubW, int pubBrightness){
+  // Build Json MQTT Message
+  JsonObject root = doc.to<JsonObject>();
+  root["status"] = pubStatus.c_str();
+  root["state"] = pubState.c_str();
+  root["brightness"] = pubBrightness;
+  root["white_value"] = pubW;
+  JsonArray data = root.createNestedArray("rgb");
+  data.add(pubR);
+  data.add(pubG);
+  data.add(pubB);
+  serializeJson(doc, buffer);
+  mqtt.publish(topic,buffer);
+  return true;
 }
 
 //##//##//##//##  Setup
@@ -221,55 +219,8 @@ void setup() {
   mac.toCharArray(macAdd, 30);
 
 
-  //init OTA
-  // Port defaults to 8266
-  ArduinoOTA.setPort(8080);
-
- // Hostname defaults to esp8266-[ChipID]
-  ArduinoOTA.setHostname("CabinetLights-L");
-
- // No authentication by default
-  ArduinoOTA.setPassword("admin");
-
- // Password can be set with it's md5 value as well
- // MD5(admin) = 21232f297a57a5a743894a0e4a801fc3
- // ArduinoOTA.setPasswordHash("21232f297a57a5a743894a0e4a801fc3");
-
- ArduinoOTA.onStart([]() {
-   String type;
-   if (ArduinoOTA.getCommand() == U_FLASH) {
-     type = "sketch";
-   } else { // U_FS
-     type = "filesystem";
-   }
-
-   // NOTE: if updating FS this would be the place to unmount FS using FS.end()
-   Serial.println("Start updating " + type);
- });
- ArduinoOTA.onEnd([]() {
-   Serial.println("\nEnd");
- });
- ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
-   Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
- });
- ArduinoOTA.onError([](ota_error_t error) {
-   Serial.printf("Error[%u]: ", error);
-   if (error == OTA_AUTH_ERROR) {
-     Serial.println("Auth Failed");
-   } else if (error == OTA_BEGIN_ERROR) {
-     Serial.println("Begin Failed");
-   } else if (error == OTA_CONNECT_ERROR) {
-     Serial.println("Connect Failed");
-   } else if (error == OTA_RECEIVE_ERROR) {
-     Serial.println("Receive Failed");
-   } else if (error == OTA_END_ERROR) {
-     Serial.println("End Failed");
-   }
- });
- ArduinoOTA.begin();
- Serial.println("Ready");
- Serial.print("IP address: ");
- Serial.println(WiFi.localIP());
+  //init webota
+  webota.init(8080, "/update");
   // Wait for connection
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
@@ -287,54 +238,54 @@ void setup() {
 
   // set LWT
   baseTopic.toCharArray(statusTopic,30);
-  strcat(statusTopic, "status");
+  strcat(statusTopic, "info");
 
   // Initial MQTT Setup
   client.connect(clientName, MQTT_USER, MQTT_PASS, statusTopic, 1, 1, "offline");
-  mqtt.publish(baseTopic + "status", "online", true);
+//  mqtt.publish(baseTopic + "status", "online", true);
   mqtt.publish(baseTopic + "ip", ipAdd, true);
   mqtt.publish(baseTopic + "mac", macAdd, true);
 
   // Define Callback func
   client.setCallback(callback);
 
-
   // Subscribe to MQTT Set Topic
   client.subscribe("home/Cabinetlights/set");
+  state = "OFF";
+  publishStatus(baseTopic + "info", "online", state,0,0,0,0,0);
+  uptime = millis();
+  mqtt.publish(baseTopic + "uptime", (String)uptime);
 }
 
 void loop() {
-
+  long now = millis();
   if (!client.connected()) {
-    long now = millis();
     if (now - lastReconnectAttempt > 5000) {
       lastReconnectAttempt = now;
       // Attempt to reconnect
       if (reconnect()) {
         lastReconnectAttempt = 0;
       }
-      String UTtopic = baseTopic + "uptime";
-      uptime = millis();
-      itoa(uptime, msg, 10);
-      UTtopic.toCharArray(charBuf, 50);
-      client.publish(charBuf, msg);
     }
   } else {
     // Client connected
     client.loop();
   }
+  if(now - lastUpdate > 30000){
+    uptime = millis();
+    mqtt.publish(baseTopic + "uptime", (String)uptime);
+    checkState();
+    publishStatus(baseTopic + "info", "online",state,r,g,b,w,brightness);
+    lastUpdate = now;
+  }
 
-
-
-  ArduinoOTA.handle();
+  webota.handle();
   server.handleClient();
   MDNS.update();
   checkState();
 
   if (uptime > 4000000000) {
-    topic = baseTopic + "/INFO";
-    topic.toCharArray(charBuf, 50);
-    client.publish(charBuf, "Restart", true);
+    mqtt.publish(baseTopic + "info", "restart", true);
     ESP.restart();
   }
 }
