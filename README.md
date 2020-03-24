@@ -9,3 +9,11 @@
 # To Do
 - Add Light state function
 - Build out web frontend
+
+
+
+# Wiring Diagram
+For ease i used an Uno board but this is actually designed for a nodeMCU.  check the pinouts on your board for more info
+
+
+![Wiring Diagram](https://github.com/errolsancaktar/ESP-MQTT-Lighting/blob/master/MQTTLight.png?raw=true)
