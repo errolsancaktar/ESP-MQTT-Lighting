@@ -1,6 +1,33 @@
 // Config File
 // Errol Sancaktar
-// 2020-03-13
+// 2020-03-24
+
+// MQTT configuration
+#define MQTT_USER ""
+#define MQTT_PASS ""
+#define MQTT_SERVER ""
+
+//Base of device
+String baseTopic = "";
+
+//Topic to post status
+char statusTopic[50];
+
+//This clients name
+char clientName[20] = "";
+char mqttSet[30] = "";
+
+
+
+
+
+
+
+
+
+
+
+//------------\You shouldnt need to Modify any of this------------------//
 
 // Instantiate Variables
 
@@ -13,26 +40,29 @@ char ipAdd[20];
 char macAdd[30];
 int previousTime;
 int uptime;
+char buffer[512];
+StaticJsonDocument<200> doc;
 String ip;
 String mac;
 String topic;
 long lastReconnectAttempt = 0;
+long lastUpdate = 0;
 uint8_t color;
 int brightness;
 int r;
 int g;
 int b;
 int w;
-String effect = "NULL";
+String state;
+String status;
+String avail;
 #define FADESPEED 500
 #define REDPIN    15
 #define GREENPIN    12
 #define BLUEPIN  14
 #define WHITEPIN   13
-#define MQTT_USER "<USERNAME>"
-#define MQTT_PASS "<PASSWORD>""
-#define MQTT_SERVER "<SERVER>"
-String baseTopic = "home/Cabinetlights/";
-char cbaseTopic[50] = "home/Cabinetlights/";
-char clientName[50] = "CabinetLights-L";
-char mqttSet[30] = "home/Cabinetlights/set";
+
+
+
+//Function Definitions
+bool setColor(int r = 0, int g = 0, int b = 0, int w = 255, int brightness = 100);

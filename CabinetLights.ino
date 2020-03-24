@@ -30,7 +30,7 @@ void handleRoot() {
   htmlmsg += "Red: " + String(r) + "<BR>Green: " + String(g) + "<BR>Blue: " + String(b) + "<BR>White: " + String(w);
   htmlmsg += "</BODY></HTML>";
   htmlmsg += "<BR>";
-  htmlmsg += "State: " + state;
+  htmlmsg += "State: " + (String)state;
   htmlmsg += "<BR>";
   htmlmsg += "</BODY></HTML>";
   htmlmsg += "<BR>";
@@ -70,6 +70,9 @@ void callback(char* topic, byte* payload, unsigned int length) {
   if(data.containsKey("state")){
     state = data["state"].as<String>();
     if(state == "ON"){
+      r = 0;
+      g = 0;
+      b = 0;
       w = 255;
       brightness = 100;
     }
@@ -87,12 +90,14 @@ void callback(char* topic, byte* payload, unsigned int length) {
   }
   if(state == "OFF"){
     turnOff();
+    publishStatus(baseTopic + "info","online","OFF",0,0,0,0,0);
   }else if(state == "ON"){
     if (setColor(r, g, b, w, brightness)) {
-      mqtt.publish(baseTopic + "brightness", String(brightness), true);
-      mqtt.publish(baseTopic + "white_value", String(w), true);
-      String rgbcolor = "[" + String(r) + "," + String(g) + "," + String(b) + "]";
-      mqtt.publish(baseTopic + "rgb", rgbcolor, true);
+      //mqtt.publish(baseTopic + "brightness", String(brightness), true);
+      //mqtt.publish(baseTopic + "white_value", String(w), true);
+      //String rgbcolor = "[" + String(r) + "," + String(g) + "," + String(b) + "]";
+      //mqtt.publish(baseTopic + "rgb", rgbcolor, true);
+      publishStatus(baseTopic + "info","online",state,r,g,b,w,brightness);
     }
   }
 }
@@ -100,7 +105,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
 boolean reconnect() {
   if (client.connect(clientName, MQTT_USER, MQTT_PASS, statusTopic, 1, 1, "offline")) {
 
-    mqtt.publish(baseTopic + "status", "online", true);
+    //mqtt.publish(baseTopic + "status", "online", true);
     mqtt.publish(baseTopic + "ip", ipAdd, true);
     mqtt.publish(baseTopic + "mac", macAdd, true);
     lastReconnectAttempt = 0;
@@ -152,12 +157,26 @@ void handleLight() {
 
 bool checkState() {
   if (r > 0 || g > 0 || b > 0 || w > 0) {
-    mqtt.publish(baseTopic + "state", "ON", true);
     state = "ON";
   } else {
-    mqtt.publish(baseTopic + "state", "OFF", true);
     state = "OFF";
   }
+  return true;
+}
+
+bool publishStatus(String topic, String pubStatus, String pubState, int pubR, int pubG, int pubB, int pubW, int pubBrightness){
+  // Build Json MQTT Message
+  JsonObject root = doc.to<JsonObject>();
+  root["status"] = pubStatus.c_str();
+  root["state"] = pubState.c_str();
+  root["brightness"] = pubBrightness;
+  root["white_value"] = pubW;
+  JsonArray data = root.createNestedArray("rgb");
+  data.add(pubR);
+  data.add(pubG);
+  data.add(pubB);
+  serializeJson(doc, buffer);
+  mqtt.publish(topic,buffer);
   return true;
 }
 
@@ -219,11 +238,11 @@ void setup() {
 
   // set LWT
   baseTopic.toCharArray(statusTopic,30);
-  strcat(statusTopic, "status");
+  strcat(statusTopic, "info");
 
   // Initial MQTT Setup
   client.connect(clientName, MQTT_USER, MQTT_PASS, statusTopic, 1, 1, "offline");
-  mqtt.publish(baseTopic + "status", "online", true);
+//  mqtt.publish(baseTopic + "status", "online", true);
   mqtt.publish(baseTopic + "ip", ipAdd, true);
   mqtt.publish(baseTopic + "mac", macAdd, true);
 
@@ -233,30 +252,32 @@ void setup() {
   // Subscribe to MQTT Set Topic
   client.subscribe("home/Cabinetlights/set");
   state = "OFF";
+  publishStatus(baseTopic + "info", "online", state,0,0,0,0,0);
+  uptime = millis();
+  mqtt.publish(baseTopic + "uptime", (String)uptime);
 }
 
 void loop() {
-
+  long now = millis();
   if (!client.connected()) {
-    long now = millis();
     if (now - lastReconnectAttempt > 5000) {
       lastReconnectAttempt = now;
       // Attempt to reconnect
       if (reconnect()) {
         lastReconnectAttempt = 0;
       }
-      String UTtopic = baseTopic + "uptime";
-      uptime = millis();
-      itoa(uptime, msg, 10);
-      UTtopic.toCharArray(charBuf, 50);
-      client.publish(charBuf, msg);
     }
   } else {
     // Client connected
     client.loop();
   }
-
-
+  if(now - lastUpdate > 30000){
+    uptime = millis();
+    mqtt.publish(baseTopic + "uptime", (String)uptime);
+    checkState();
+    publishStatus(baseTopic + "info", "online",state,r,g,b,w,brightness);
+    lastUpdate = now;
+  }
 
   webota.handle();
   server.handleClient();
@@ -264,9 +285,7 @@ void loop() {
   checkState();
 
   if (uptime > 4000000000) {
-    topic = baseTopic + "/INFO";
-    topic.toCharArray(charBuf, 50);
-    client.publish(charBuf, "Restart", true);
+    mqtt.publish(baseTopic + "info", "restart", true);
     ESP.restart();
   }
 }
