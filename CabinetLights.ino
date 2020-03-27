@@ -67,6 +67,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   StaticJsonDocument<400> jsonpl;
   deserializeJson(jsonpl, payload, length);
   JsonObject data = jsonpl.as<JsonObject>();
+  JsonVariant white = data["white_value"];
   if(data.containsKey("state")){
     state = data["state"].as<String>();
     if(state == "ON"){
@@ -84,6 +85,9 @@ void callback(char* topic, byte* payload, unsigned int length) {
     r = data["rgb"][0];
     g = data["rgb"][1];
     b = data["rgb"][2];
+    if(white.isNull()){
+      w = 0;
+    }
   }
   if(data.containsKey("white_value")){
     w = data["white_value"];
@@ -255,6 +259,8 @@ void setup() {
   publishStatus(baseTopic + "info", "online", state,0,0,0,0,0);
   uptime = millis();
   mqtt.publish(baseTopic + "uptime", (String)uptime);
+  mqtt.publish(baseTopic + "status","online",true);
+
 }
 
 void loop() {
@@ -276,6 +282,7 @@ void loop() {
     mqtt.publish(baseTopic + "uptime", (String)uptime);
     checkState();
     publishStatus(baseTopic + "info", "online",state,r,g,b,w,brightness);
+    mqtt.publish(baseTopic + "status","online",true);
     lastUpdate = now;
   }
 
