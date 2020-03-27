@@ -89,6 +89,15 @@ void callback(char* topic, byte* payload, unsigned int length) {
       w = 0;
     }
   }
+  if(data.containsKey("color")){
+    r = data["color"]["r"];
+    g = data["color"]["g"];
+    b = data["color"]["b"];
+    if(white.isNull()){
+      w = 0;
+    }
+  }
+
   if(data.containsKey("white_value")){
     w = data["white_value"];
   }
@@ -259,7 +268,7 @@ void setup() {
   publishStatus(baseTopic + "info", "online", state,0,0,0,0,0);
   uptime = millis();
   mqtt.publish(baseTopic + "uptime", (String)uptime);
-  mqtt.publish(baseTopic + "status","online",true);
+  mqtt.publish(baseTopic + "status","{\"status\": \"online\"}",true);
 
 }
 
