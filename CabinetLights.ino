@@ -118,13 +118,15 @@ void callback(char* topic, byte* payload, unsigned int length) {
 boolean reconnect() {
   if (client.connect(clientName, MQTT_USER, MQTT_PASS, statusTopic, 1, 1, "offline")) {
 
-    //mqtt.publish(baseTopic + "status", "online", true);
     mqtt.publish(baseTopic + "ip", ipAdd, true);
     mqtt.publish(baseTopic + "mac", macAdd, true);
+    mqtt.publish(baseTopic = "check", "Still Here");
+    client.subscribe("home/Cabinetlights/set");
     lastReconnectAttempt = 0;
     return client.connected();
   }
-  return client.connected();
+  return false;
+
 }
 
 bool setColor(int r, int g, int b, int w, int brightness) {
@@ -170,6 +172,9 @@ void handleLight() {
 
 bool checkState() {
   if (r > 0 || g > 0 || b > 0 || w > 0) {
+    if(brightness == 0){
+      state = "OFF";
+    }
     state = "ON";
   } else {
     state = "OFF";
@@ -279,19 +284,20 @@ void loop() {
       lastReconnectAttempt = now;
       // Attempt to reconnect
       if (reconnect()) {
+        mqtt.publish(baseTopic = "check", "reconnected");
         lastReconnectAttempt = 0;
+      }else{
+        mqtt.publish(baseTopic = "check", "problem with reconnect");
       }
     }
-  } else {
-    // Client connected
-    client.loop();
   }
+  client.loop();
   if(now - lastUpdate > 30000){
     uptime = millis();
     mqtt.publish(baseTopic + "uptime", (String)uptime);
     checkState();
     publishStatus(baseTopic + "info", "online",state,r,g,b,w,brightness);
-    mqtt.publish(baseTopic + "status","online",true);
+    mqtt.publish(baseTopic + "status","{\"status\": \"online\"}",true);
     lastUpdate = now;
   }
 
