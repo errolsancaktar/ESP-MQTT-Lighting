@@ -120,7 +120,7 @@ boolean reconnect() {
 
     mqtt.publish(baseTopic + "ip", ipAdd, true);
     mqtt.publish(baseTopic + "mac", macAdd, true);
-    mqtt.publish(baseTopic = "check", "Still Here");
+    mqtt.publish(baseTopic + "check", "Still Here");
     client.subscribe("home/Cabinetlights/set");
     lastReconnectAttempt = 0;
     return client.connected();
@@ -284,10 +284,10 @@ void loop() {
       lastReconnectAttempt = now;
       // Attempt to reconnect
       if (reconnect()) {
-        mqtt.publish(baseTopic = "check", "reconnected");
+        mqtt.publish(baseTopic + "check", "reconnected");
         lastReconnectAttempt = 0;
       }else{
-        mqtt.publish(baseTopic = "check", "problem with reconnect");
+        mqtt.publish(baseTopic + "check", "problem with reconnect");
       }
     }
   }
