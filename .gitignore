@@ -1,4 +1,4 @@
 config.h
 CabinetLights.ino.nodemcu.bin
-.pio
-.vscode
+.pio/*
+.vscode/*
