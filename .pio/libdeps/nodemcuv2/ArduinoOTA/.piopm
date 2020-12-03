@@ -1,0 +1,1 @@
+{"type": "library", "name": "ArduinoOTA", "version": "1.0.0+sha.35a5a70", "spec": {"owner": null, "id": null, "name": "Arduino", "requirements": null, "url": "git+https://github.com/esp8266/Arduino"}}

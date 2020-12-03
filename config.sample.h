@@ -57,10 +57,10 @@ String state;
 String status;
 String avail;
 #define FADESPEED 500
-#define REDPIN    15
-#define GREENPIN    12
-#define BLUEPIN  14
-#define WHITEPIN   13
+#define REDPIN    12
+#define GREENPIN    13
+#define BLUEPIN  15
+#define WHITEPIN   14
 
 
 
