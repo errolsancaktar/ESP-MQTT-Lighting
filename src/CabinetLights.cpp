@@ -1,5 +1,6 @@
 
 //Libs
+#include <Arduino.h>
 #include <DNSServer.h>
 #include <ESP8266WebServer.h>
 #include <WiFiManager.h>         //https://github.com/tzapu/WiFiManager
@@ -9,6 +10,7 @@
 #include <ESP8266mDNS.h>
 #include <ArduinoJson.h>
 #include <WebOTA.h>
+#include <Wire.h>
 #include "config.h"
 
 
@@ -60,7 +62,30 @@ WiFiClient espClient;
 PubSubClient client(MQTT_SERVER, 1883, callback, espClient);
 PubSubClientTools mqtt(client);
 
+void turnOff() {
+  analogWrite(REDPIN, 0);
+  analogWrite(GREENPIN, 0);
+  analogWrite(BLUEPIN, 0);
+  analogWrite(WHITEPIN, 0);
+  brightness = 0;
+  checkState();
+}
 
+bool publishStatus(String topic, String pubStatus, String pubState, int pubR, int pubG, int pubB, int pubW, int pubBrightness){
+  // Build Json MQTT Message
+  JsonObject root = doc.to<JsonObject>();
+  root["status"] = pubStatus.c_str();
+  root["state"] = pubState.c_str();
+  root["brightness"] = pubBrightness;
+  root["white_value"] = pubW;
+  JsonArray data = root.createNestedArray("rgb");
+  data.add(pubR);
+  data.add(pubG);
+  data.add(pubB);
+  serializeJson(doc, buffer);
+  mqtt.publish(topic,buffer);
+  return true;
+}
 void callback(char* topic, byte* payload, unsigned int length) {
 
   StaticJsonDocument<400> jsonpl;
@@ -125,14 +150,16 @@ bool setColor(int r, int g, int b, int w, int brightness) {
   return true;
 }
 
-void turnOff() {
-  analogWrite(REDPIN, 0);
-  analogWrite(GREENPIN, 0);
-  analogWrite(BLUEPIN, 0);
-  analogWrite(WHITEPIN, 0);
-  brightness = 0;
-  checkState();
+bool checkState() {
+  if (r > 0 || g > 0 || b > 0 || w > 0) {
+    state = "ON";
+  } else {
+    state = "OFF";
+  }
+  return true;
 }
+
+
 
 
 void handleLight() {
@@ -154,30 +181,8 @@ void handleLight() {
 
 }
 
-bool checkState() {
-  if (r > 0 || g > 0 || b > 0 || w > 0) {
-    state = "ON";
-  } else {
-    state = "OFF";
-  }
-  return true;
-}
 
-bool publishStatus(String topic, String pubStatus, String pubState, int pubR, int pubG, int pubB, int pubW, int pubBrightness){
-  // Build Json MQTT Message
-  JsonObject root = doc.to<JsonObject>();
-  root["status"] = pubStatus.c_str();
-  root["state"] = pubState.c_str();
-  root["brightness"] = pubBrightness;
-  root["white_value"] = pubW;
-  JsonArray data = root.createNestedArray("rgb");
-  data.add(pubR);
-  data.add(pubG);
-  data.add(pubB);
-  serializeJson(doc, buffer);
-  mqtt.publish(topic,buffer);
-  return true;
-}
+
 
 //##//##//##//##  Setup
 
