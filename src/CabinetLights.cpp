@@ -11,6 +11,7 @@
 #include <ArduinoJson.h>
 #include <WebOTA.h>
 #include <Wire.h>
+#include <FS.h>
 #include "config.h"
 
 
@@ -22,7 +23,7 @@
 
 ESP8266WebServer server(80);
 
-void handleRoot() {
+/* void handleRoot() {
   String htmlmsg = "";
   htmlmsg += "<HTML><BODY><H1>Current Brightness: </H1>";
   htmlmsg += brightness;
@@ -39,7 +40,7 @@ void handleRoot() {
   server.send(200, "text/html", htmlmsg);
   Serial.println(htmlmsg);
 
-}
+} */
 
 
 void handleNotFound() {
@@ -189,7 +190,7 @@ void handleLight() {
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
-  Serial.println("starting Setup");
+  Serial.println("starting Setup Func");
 
   //Setup LED Pins
   pinMode(REDPIN, OUTPUT);
@@ -233,12 +234,23 @@ void setup() {
   if (MDNS.begin("esp8266")) {
     Serial.println("MDNS responder started");
     server.on("/cmd", handleLight);
-    server.on("/", handleRoot);
+    //server.on("/", handleRoot);
     server.onNotFound(handleNotFound);
 
     server.begin();
     Serial.println("HTTP server started");
   }
+
+  // Set up SPIFFS
+  if (!SPIFFS.begin())
+  {
+    // Serious problem
+    Serial.println("SPIFFS Mount failed");
+  } else {
+    Serial.println("SPIFFS Mount succesfull");
+  }
+
+  server.serveStatic("/", SPIFFS, "/index.html");
 
   // set LWT
   baseTopic.toCharArray(statusTopic,30);
@@ -290,7 +302,7 @@ void loop() {
   MDNS.update();
   checkState();
 
-  if (uptime > 4000000000) {
+  if (uptime > 2000000000) {
     mqtt.publish(baseTopic + "info", "restart", true);
     ESP.restart();
   }
