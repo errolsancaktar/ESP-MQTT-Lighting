@@ -12,6 +12,8 @@
 #include <WebOTA.h>
 #include <Wire.h>
 #include <FS.h>
+#include "ESPAsyncWebServer.h"
+#include "LittleFS.h"
 #include "config.h"
 
 
@@ -241,13 +243,11 @@ void setup() {
     Serial.println("HTTP server started");
   }
 
-  // Set up SPIFFS
-  if (!SPIFFS.begin())
-  {
-    // Serious problem
-    Serial.println("SPIFFS Mount failed");
-  } else {
-    Serial.println("SPIFFS Mount succesfull");
+  // Set up LittleFS
+  Serial.println("Mount LittleFS");
+  if (!LittleFS.begin()) {
+    Serial.println("LittleFS mount failed");
+    return;
   }
 
   server.serveStatic("/", SPIFFS, "/index.html");
