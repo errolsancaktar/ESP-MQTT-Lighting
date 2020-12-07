@@ -3,19 +3,14 @@
 #include "config.h"
 
 
-
-
-
-
-
-
 // Setup WifiClient
-
-AsyncWebServer server(80);
-
-void handleNotFound(AsyncWebServerRequest *request) {
-  request->send(404, "text/plain", "Not found");
+void configModeCallback (AsyncWiFiManager *wifiManager) {
+  Serial.println("Entered config mode");
+  Serial.println(WiFi.softAPIP());
+  //if you used auto generated SSID, print it
+  Serial.println(wifiManager->getConfigPortalSSID());
 }
+AsyncWebServer server(80);
 
 WiFiClient espClient;
 PubSubClient client(MQTT_SERVER, 1883, callback, espClient);
@@ -134,21 +129,16 @@ void setup() {
   pinMode(WHITEPIN, OUTPUT);
 
   //WiFiManager
-  //Local intialization. Once its business is done, there is no need to keep it around
-  AsyncWiFiManager wifiManager;
-  //reset saved settings
-  //wifiManager.resetSettings();
-
-  //set custom ip for portal
-  //wifiManager.setAPStaticIPConfig(IPAddress(10,0,1,1), IPAddress(10,0,1,1), IPAddress(255,255,255,0));
-
-  //fetches ssid and pass from eeprom and tries to connect
-  //if it does not connect it starts an access point with the specified name
-  //here  "AutoConnectAP"
-  //and goes into a blocking loop awaiting configuration
-  wifiManager.autoConnect("AutoConnectAP");
-  //or use this for auto generated name ESP + ChipID
-  //wifiManager.autoConnect();
+  //set callback that gets called when connecting to previous WiFi fails, and enters Access Point mode
+  AsyncWiFiManager wifiManager(&server,&dns);
+  wifiManager.setAPCallback(configModeCallback);
+  wifiManager.autoConnect("LEDControl");
+ if(!wifiManager.autoConnect()) {
+    Serial.println("failed to connect and hit timeout");
+    //reset and try again, or maybe put it to deep sleep
+    ESP.reset();
+    delay(1000);
+  }
 
 
   //if you get here you have connected to the WiFi
@@ -166,10 +156,6 @@ void setup() {
     delay(500);
     Serial.print(".");
   }
-  if (MDNS.begin("esp8266")) {
-    Serial.println("MDNS responder started");
-    server.on("/cmd", handleLight);
-
     server.onNotFound([](AsyncWebServerRequest *request){
       Serial.printf("NOT_FOUND: ");
     if(request->method() == HTTP_GET)
@@ -215,7 +201,6 @@ void setup() {
 
     server.begin();
     Serial.println("HTTP server started");
-  }
 
   // Set up LittleFS
   Serial.println("Mount LittleFS");
@@ -272,8 +257,7 @@ void loop() {
   }
 
   //webota.handle();
-  server.handleClient();
-  MDNS.update();
+  //server.handleClient();
   checkState();
 
   if (uptime > 2000000000) {
