@@ -1,20 +1,8 @@
 
 //Libs
-#include <Arduino.h>
-#include <DNSServer.h>
-#include <ESP8266WebServer.h>
-#include <WiFiManager.h>         //https://github.com/tzapu/WiFiManager
-#include <PubSubClient.h>
-#include <PubSubClientTools.h>
-#include <ESP8266WiFi.h>          //https://github.com/esp8266/Arduino
-#include <ESP8266mDNS.h>
-#include <ArduinoJson.h>
-#include <WebOTA.h>
-#include <Wire.h>
-#include <FS.h>
-#include "ESPAsyncWebServer.h"
-#include "LittleFS.h"
 #include "config.h"
+
+
 
 
 
@@ -23,43 +11,11 @@
 
 // Setup WifiClient
 
-ESP8266WebServer server(80);
+AsyncWebServer server(80);
 
-/* void handleRoot() {
-  String htmlmsg = "";
-  htmlmsg += "<HTML><BODY><H1>Current Brightness: </H1>";
-  htmlmsg += brightness;
-  htmlmsg += "<BR>";
-  htmlmsg += "<H1>Current colors: </H1>";
-  htmlmsg += "Red: " + String(r) + "<BR>Green: " + String(g) + "<BR>Blue: " + String(b) + "<BR>White: " + String(w);
-  htmlmsg += "</BODY></HTML>";
-  htmlmsg += "<BR>";
-  htmlmsg += "State: " + (String)state;
-  htmlmsg += "<BR>";
-  htmlmsg += "</BODY></HTML>";
-  htmlmsg += "<BR>";
-
-  server.send(200, "text/html", htmlmsg);
-  Serial.println(htmlmsg);
-
-} */
-
-
-void handleNotFound() {
-  String message = "File Not Found\n\n";
-  message += "URI: ";
-  message += server.uri();
-  message += "\nMethod: ";
-  message += (server.method() == HTTP_GET) ? "GET" : "POST";
-  message += "\nArguments: ";
-  message += server.args();
-  message += "\n";
-  for (uint8_t i = 0; i < server.args(); i++) {
-    message += " " + server.argName(i) + ": " + server.arg(i) + "\n";
-  }
-  server.send(404, "text/plain", message);
+void handleNotFound(AsyncWebServerRequest *request) {
+  request->send(404, "text/plain", "Not found");
 }
-
 
 WiFiClient espClient;
 PubSubClient client(MQTT_SERVER, 1883, callback, espClient);
@@ -164,29 +120,6 @@ bool checkState() {
 
 
 
-
-void handleLight() {
-  if (server.arg("c") == "") {   //Parameter not found
-    server.send(200, "text/plain", "Nothing");
-  } else {    //Parameter found
-
-
-    int test = server.arg("c").toInt();
-    server.send(200, "text/plain", server.arg("c"));
-    switch (test) {
-      case 5:
-      turnOff();
-      break;
-    }
-    server.sendHeader("Location", "/");
-  }
-
-
-}
-
-
-
-
 //##//##//##//##  Setup
 
 void setup() {
@@ -202,7 +135,7 @@ void setup() {
 
   //WiFiManager
   //Local intialization. Once its business is done, there is no need to keep it around
-  WiFiManager wifiManager;
+  AsyncWiFiManager wifiManager;
   //reset saved settings
   //wifiManager.resetSettings();
 
@@ -227,7 +160,7 @@ void setup() {
 
 
   //init webota
-  webota.init(8080, "/update");
+  //webota.init(8080, "/update");
   // Wait for connection
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
@@ -236,8 +169,49 @@ void setup() {
   if (MDNS.begin("esp8266")) {
     Serial.println("MDNS responder started");
     server.on("/cmd", handleLight);
-    //server.on("/", handleRoot);
-    server.onNotFound(handleNotFound);
+
+    server.onNotFound([](AsyncWebServerRequest *request){
+      Serial.printf("NOT_FOUND: ");
+    if(request->method() == HTTP_GET)
+      Serial.printf("GET");
+    else if(request->method() == HTTP_POST)
+      Serial.printf("POST");
+    else if(request->method() == HTTP_DELETE)
+      Serial.printf("DELETE");
+    else if(request->method() == HTTP_PUT)
+      Serial.printf("PUT");
+    else if(request->method() == HTTP_OPTIONS)
+      Serial.printf("OPTIONS");
+    else
+      Serial.printf("UNKNOWN");
+    Serial.printf(" http://%s%s\n", request->host().c_str(), request->url().c_str());
+
+    if(request->contentLength()){
+      Serial.printf("_CONTENT_TYPE: %s\n", request->contentType().c_str());
+      Serial.printf("_CONTENT_LENGTH: %u\n", request->contentLength());
+    }
+
+    int headers = request->headers();
+    int i;
+    for(i=0;i<headers;i++){
+      AsyncWebHeader* h = request->getHeader(i);
+      Serial.printf("_HEADER[%s]: %s\n", h->name().c_str(), h->value().c_str());
+    }
+
+    int params = request->params();
+    for(i=0;i<params;i++){
+      AsyncWebParameter* p = request->getParam(i);
+      if(p->isFile()){
+        Serial.printf("_FILE[%s]: %s, size: %u\n", p->name().c_str(), p->value().c_str(), p->size());
+      } else if(p->isPost()){
+        Serial.printf("_POST[%s]: %s\n", p->name().c_str(), p->value().c_str());
+      } else {
+        Serial.printf("_GET[%s]: %s\n", p->name().c_str(), p->value().c_str());
+      }
+    }
+
+    request->send(404);
+  });
 
     server.begin();
     Serial.println("HTTP server started");
@@ -250,7 +224,7 @@ void setup() {
     return;
   }
 
-  server.serveStatic("/", LittleFS, "/index.html");
+  server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html");
 
   // set LWT
   baseTopic.toCharArray(statusTopic,30);
@@ -297,7 +271,7 @@ void loop() {
     lastUpdate = now;
   }
 
-  webota.handle();
+  //webota.handle();
   server.handleClient();
   MDNS.update();
   checkState();
