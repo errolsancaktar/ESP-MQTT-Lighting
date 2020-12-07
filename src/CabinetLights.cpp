@@ -250,7 +250,7 @@ void setup() {
     return;
   }
 
-  server.serveStatic("/", SPIFFS, "/index.html");
+  server.serveStatic("/", LittleFS, "/index.html");
 
   // set LWT
   baseTopic.toCharArray(statusTopic,30);
