@@ -3,7 +3,7 @@
 #include "config.h"
 
 
-// Setup WifiClient
+// Setup Wifi and AP Mode
 void configModeCallback (AsyncWiFiManager *wifiManager) {
   Serial.println("Entered config mode");
   Serial.println(WiFi.softAPIP());
@@ -113,14 +113,22 @@ bool checkState() {
   return true;
 }
 
-
+// Dynamic Callbacks
+String processor(const String& var){
+  Serial.println(var);
+  if(var == "SERVER"){
+    Serial.print(MQTT_SERVER);
+    return MQTT_SERVER;
+  }
+  return String();
+}
 
 //##//##//##//##  Setup
 
 void setup() {
-  // put your setup code here, to run once:
+  // Set up Serial Logging
   Serial.begin(115200);
-  Serial.println("starting Setup Func");
+  Serial.println("Starting Setup Func");
 
   //Setup LED Pins
   pinMode(REDPIN, OUTPUT);
@@ -132,7 +140,8 @@ void setup() {
   //set callback that gets called when connecting to previous WiFi fails, and enters Access Point mode
   AsyncWiFiManager wifiManager(&server,&dns);
   wifiManager.setAPCallback(configModeCallback);
-  wifiManager.autoConnect("LEDControl");
+  wifiManager.setConfigPortalTimeout(180);
+  wifiManager.autoConnect("LEDController");
  if(!wifiManager.autoConnect()) {
     Serial.println("failed to connect and hit timeout");
     //reset and try again, or maybe put it to deep sleep
@@ -156,6 +165,34 @@ void setup() {
     delay(500);
     Serial.print(".");
   }
+
+
+
+
+  // Set up LittleFS
+  Serial.println("Mount LittleFS");
+  if (!LittleFS.begin()) {
+    Serial.println("LittleFS mount failed");
+    return;
+  }
+
+
+
+// Web Server Stuff
+
+  server.begin();
+  Serial.println("HTTP server started");
+
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(LittleFS, "/index.html", String(), false, processor);
+  });
+  
+  // Route to load style.css file
+  server.on("/main.css", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(LittleFS, "/main.css", "text/css");
+  });
+
+
     server.onNotFound([](AsyncWebServerRequest *request){
       Serial.printf("NOT_FOUND: ");
     if(request->method() == HTTP_GET)
@@ -199,17 +236,7 @@ void setup() {
     request->send(404);
   });
 
-    server.begin();
-    Serial.println("HTTP server started");
 
-  // Set up LittleFS
-  Serial.println("Mount LittleFS");
-  if (!LittleFS.begin()) {
-    Serial.println("LittleFS mount failed");
-    return;
-  }
-
-  server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html");
 
   // set LWT
   baseTopic.toCharArray(statusTopic,30);
