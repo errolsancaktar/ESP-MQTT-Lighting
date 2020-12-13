@@ -3,6 +3,36 @@
 #include "config.h"
 
 
+//EEPROM Stuff
+void saveConfig() {
+  // Save configuration from RAM into EEPROM
+  EEPROM.begin(4095);
+  EEPROM.put( cfgStart, settings );
+  delay(200);
+  EEPROM.commit();                      // Only needed for ESP8266 to get data written
+  EEPROM.end();                         // Free RAM copy of structure
+}
+
+void loadConfig() {
+  // Loads configuration from EEPROM into RAM
+  Serial.println("Loading EEPROM config");
+  persistData load;
+  EEPROM.begin(4095);
+  EEPROM.get( cfgStart, load);
+  EEPROM.end();
+  settings = load;
+};
+
+
+void turnOff() {
+  analogWrite(REDPIN, 0);
+  analogWrite(GREENPIN, 0);
+  analogWrite(BLUEPIN, 0);
+  analogWrite(WHITEPIN, 0);
+  brightness = 0;
+  checkState();
+}
+
 // Setup Wifi and AP Mode
 void configModeCallback (AsyncWiFiManager *wifiManager) {
   Serial.println("Entered config mode");
@@ -13,17 +43,9 @@ void configModeCallback (AsyncWiFiManager *wifiManager) {
 AsyncWebServer server(80);
 
 WiFiClient espClient;
-PubSubClient client(MQTT_SERVER, 1883, callback, espClient);
+PubSubClient client(*settings.MQTT_SERVER, 1883, callback, espClient);
 PubSubClientTools mqtt(client);
 
-void turnOff() {
-  analogWrite(REDPIN, 0);
-  analogWrite(GREENPIN, 0);
-  analogWrite(BLUEPIN, 0);
-  analogWrite(WHITEPIN, 0);
-  brightness = 0;
-  checkState();
-}
 
 bool publishStatus(String topic, String pubStatus, String pubState, int pubR, int pubG, int pubB, int pubW, int pubBrightness){
   // Build Json MQTT Message
@@ -68,24 +90,24 @@ void callback(char* topic, byte* payload, unsigned int length) {
   }
   if(state == "OFF"){
     turnOff();
-    publishStatus(baseTopic + "info","online","OFF",0,0,0,0,0);
+    publishStatus(settings.baseTopic + "info","online","OFF",0,0,0,0,0);
   }else if(state == "ON"){
     if (setColor(r, g, b, w, brightness)) {
       //mqtt.publish(baseTopic + "brightness", String(brightness), true);
       //mqtt.publish(baseTopic + "white_value", String(w), true);
       //String rgbcolor = "[" + String(r) + "," + String(g) + "," + String(b) + "]";
       //mqtt.publish(baseTopic + "rgb", rgbcolor, true);
-      publishStatus(baseTopic + "info","online",state,r,g,b,w,brightness);
+      publishStatus(settings.baseTopic + "info","online",state,r,g,b,w,brightness);
     }
   }
 }
 
 boolean reconnect() {
-  if (client.connect(clientName, MQTT_USER, MQTT_PASS, statusTopic, 1, 1, "offline")) {
+  if (client.connect(*settings.clientName, *settings.MQTT_USER, *settings.MQTT_PASS, statusTopic, 1, 1, "offline")) {
 
     //mqtt.publish(baseTopic + "status", "online", true);
-    mqtt.publish(baseTopic + "ip", ipAdd, true);
-    mqtt.publish(baseTopic + "mac", macAdd, true);
+    mqtt.publish(settings.baseTopic + "ip", ipAdd, true);
+    mqtt.publish(settings.baseTopic + "mac", macAdd, true);
     lastReconnectAttempt = 0;
     return client.connected();
   }
@@ -117,12 +139,25 @@ bool checkState() {
 String processor(const String& var){
   Serial.println(var);
   if(var == "SERVER"){
-    Serial.print(MQTT_SERVER);
-    return MQTT_SERVER;
+    Serial.print(*settings.MQTT_SERVER);
+    return *settings.MQTT_SERVER;
+  }else if (var == "BASETOPIC")
+  {
+    Serial.print(settings.baseTopic);
+    return settings.baseTopic;   
   }
+  else if (var == "USERNAME")
+  {
+    Serial.print(*settings.MQTT_USER);
+    return *settings.MQTT_USER;   
+  }
+  else if (var == "PASS")
+  {
+    Serial.print(*settings.MQTT_PASS);
+    return *settings.MQTT_PASS;  
+  }  
   return String();
 }
-
 //##//##//##//##  Setup
 
 void setup() {
@@ -151,7 +186,7 @@ void setup() {
 
 
   //if you get here you have connected to the WiFi
-  Serial.println("connected...winning :)");
+  Serial.println("connected...winning");
   ip = WiFi.localIP().toString();
   ip.toCharArray(ipAdd, 20);
   mac = WiFi.macAddress();
@@ -186,8 +221,19 @@ void setup() {
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(LittleFS, "/index.html", String(), false, processor);
   });
+
+  server.on("/post", HTTP_POST, [](AsyncWebServerRequest *request){
+    String message;
+    if (request->hasParam("svr", true)) {
+        message = request->getParam("svr", true)->value();
+        message.toCharArray(*settings.MQTT_SERVER, 100);
+    } else {
+        message = "No message sent";
+    }
+    Serial.println(message);
+    request->redirect("/");
+  });
   
-  // Route to load style.css file
   server.on("/main.css", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(LittleFS, "/main.css", "text/css");
   });
@@ -237,58 +283,60 @@ void setup() {
   });
 
 
+  if(settings.MQTT_SERVER != NULL){
+    // set LWT
+    settings.baseTopic.toCharArray(statusTopic,30);
+    strcat(statusTopic, "info");
 
-  // set LWT
-  baseTopic.toCharArray(statusTopic,30);
-  strcat(statusTopic, "info");
+    // Initial MQTT Setup
+    client.connect(*settings.clientName, *settings.MQTT_USER, *settings.MQTT_PASS, statusTopic, 1, 1, "offline");
+  //  mqtt.publish(baseTopic + "status", "online", true);
+    mqtt.publish(settings.baseTopic + "ip", ipAdd, true);
+    mqtt.publish(settings.baseTopic + "mac", macAdd, true);
 
-  // Initial MQTT Setup
-  client.connect(clientName, MQTT_USER, MQTT_PASS, statusTopic, 1, 1, "offline");
-//  mqtt.publish(baseTopic + "status", "online", true);
-  mqtt.publish(baseTopic + "ip", ipAdd, true);
-  mqtt.publish(baseTopic + "mac", macAdd, true);
+    // Define Callback func
+    client.setCallback(callback);
 
-  // Define Callback func
-  client.setCallback(callback);
-
-  // Subscribe to MQTT Set Topic
-  baseTopic.toCharArray(charBuf,30);
-  strcat(charBuf, "set");
-  client.subscribe(charBuf);
-  state = "OFF";
-  publishStatus(baseTopic + "info", "online", state,0,0,0,0,0);
-  uptime = millis();
-  mqtt.publish(baseTopic + "uptime", (String)uptime);
+    // Subscribe to MQTT Set Topic
+    settings.baseTopic.toCharArray(charBuf,30);
+    strcat(charBuf, "set");
+    client.subscribe(charBuf);
+    state = "OFF";
+    publishStatus(settings.baseTopic + "info", "online", state,0,0,0,0,0);
+    uptime = millis();
+    mqtt.publish(settings.baseTopic + "uptime", (String)uptime);
+  }
 }
 
 void loop() {
-  long now = millis();
-  if (!client.connected()) {
-    if (now - lastReconnectAttempt > 5000) {
-      lastReconnectAttempt = now;
-      // Attempt to reconnect
-      if (reconnect()) {
-        lastReconnectAttempt = 0;
+  if(settings.MQTT_SERVER != NULL){  
+    long now = millis();
+    if (!client.connected()) {
+      if (now - lastReconnectAttempt > 5000) {
+        lastReconnectAttempt = now;
+        // Attempt to reconnect
+        if (reconnect()) {
+          lastReconnectAttempt = 0;
+        }
       }
+    } else {
+      // Client connected
+      client.loop();
     }
-  } else {
-    // Client connected
-    client.loop();
+    if(now - lastUpdate > 30000){
+      uptime = millis();
+      mqtt.publish(settings.baseTopic + "uptime", (String)uptime);
+      checkState();
+      publishStatus(settings.baseTopic + "info", "online",state,r,g,b,w,brightness);
+      lastUpdate = now;
+    }
   }
-  if(now - lastUpdate > 30000){
-    uptime = millis();
-    mqtt.publish(baseTopic + "uptime", (String)uptime);
-    checkState();
-    publishStatus(baseTopic + "info", "online",state,r,g,b,w,brightness);
-    lastUpdate = now;
-  }
-
   //webota.handle();
   //server.handleClient();
   checkState();
 
   if (uptime > 2000000000) {
-    mqtt.publish(baseTopic + "info", "restart", true);
+    *settings.MQTT_SERVER != NULL ? mqtt.publish(settings.baseTopic + "info", "restart", true): NULL ;
     ESP.restart();
   }
 }

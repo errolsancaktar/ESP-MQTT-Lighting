@@ -54,6 +54,7 @@
     </div>
     <div class="container-fluid bg-2 text-center settings">
         <h3>Settings</h3>
+        <form action="/post">
         <div class="row">
                 <div class="col-sm">
                     <label for="server"> MQTT Server Address:</label>
@@ -74,6 +75,7 @@
                     <input type="password" class="form-control" id="pwd" value="%PASS%">
                 </div>
         </div>
+        </form>
         <div class="row">
             <div class="col-sm"></div>
             <div class="col-sm">
@@ -85,31 +87,31 @@
     </div>
 
 
-    <div class="container-fluid bg-3 text-center colors">
+    <!-- <div class="container-fluid bg-3 text-center colors">
         <h3>Other Colors</h3>
         <div class="row">
             <div class="col-sm">
                 <label for="red">red: </label>
-                <input type="range" class="custom-range" min="0" max="255" id="red">
+                <input type="range" class="custom-range" min="0" max="255" value="%REDV%" id="red">
                 <span id="redval"></span>
             </div>
             <div class="col-sm">
                 <label for="green">green: </label>
-                <input type="range" class="custom-range" min="0" max="255" id="green">
+                <input type="range" class="custom-range" min="0" max="255" value="%GREENV%" id="green">
                 <span id="greenval"></span>
             </div>
             <div class="col-sm">
                 <label for="blue">blue: </label>
-                <input type="range" class="custom-range" min="0" max="255" id="blue">
+                <input type="range" class="custom-range" min="0" max="255" value="%BLUEV%" id="blue">
                 <span id="blueval"></span>
             </div>
             <div class="col-sm">
                 <label for="white">white: </label>
-                <input type="range" class="custom-range" min="0" max="255" id="white">
+                <input type="range" class="custom-range" min="0" max="255" value="%WHITEV%" id="white">
                 <span id="whiteval"></span>
             </div>
         </div>
-    </div>
+    </div> -->
 </body>
 <script>
     $("#settings").click(function () {
