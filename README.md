@@ -17,3 +17,9 @@ For ease i used an Uno board but this is actually designed for a nodeMCU.  check
 
 
 ![Wiring Diagram](https://github.com/errolsancaktar/ESP-MQTT-Lighting/blob/master/MQTTLight.png?raw=true)
+
+# PCB
+Designed Board
+
+
+![PCB](https://github.com/errolsancaktar/ESP-MQTT-Lighting/blob/master/MQTTLight.jpg?raw=true)
