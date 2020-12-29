@@ -18,12 +18,17 @@ body {
     color: #ffffff;
     display: block;
 }
+.colorForm{
+    color: white;
+}
 
 .container-fluid {
     padding-top: 70px;
     padding-bottom: 70px;
 }
+.mqttenable{
 
+}
 .navbar {
     background-color: #fff;
     padding-top: 10px;

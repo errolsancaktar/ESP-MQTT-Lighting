@@ -15,9 +15,7 @@
         integrity="sha384-TX8t27EcRE3e/ihU7zmQxVncDAy5uIKz4rEkgIXeMed4M0jlfIDPvg6uqKI2xXr2" crossorigin="anonymous">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"
-        integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous">
-    </script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/js/bootstrap.bundle.min.js"
         integrity="sha384-ho+j7jyWK8fNQe+A12Hb8AhRq26LrZ/JpcUGGOn+Y7RsweNrtN/tE3MoK7ZeZDyx" crossorigin="anonymous">
     </script>
@@ -44,35 +42,46 @@
 
     <div class="container-fluid bg-1 text-center">
         <h1>RGB Light Control</h1>
-        <button class="btn btn-lg btn-danger">Red</button>
-        <button class="btn btn-lg btn-success">Green</button>
-        <button class="btn btn-lg btn-warning">Yellow</button>
+        <button id="redButton" class="btn btn-lg btn-danger">Red</button>
+        <button id="greenButton" class="btn btn-lg btn-success">Green</button>
+        <button id="yellowButton" class="btn btn-lg btn-warning">Yellow</button>
+        <button id="blueButton" class="btn btn-lg btn-primary">Blue</button>
+        <button id="whiteButton" class="btn btn-lg btn-light">White</button>
     </div>
     <div class="container-fluid text-center">
-        <h3>Current Color: <BR> %CURRENT_COLOR%</h3>
+        <form action="/post" method="POST" class="colorForm">
+        <h3 class="colorForm">Current Color: <BR> %CURRENT_COLOR%</h3>
+            <label class="colorForm" for="color">Hex Color: #</label>
+            <input type="test" id="color" value="%HEXCOLOR%">
+            <button id="whiteButton" class="btn btn-sm btn-info">Submit</button>
+        </form>
 
     </div>
     <div class="container-fluid bg-2 text-center settings">
         <h3>Settings</h3>
+        <label for="mqttstatus">MQTT Enabled:</label>
+        <form action="/post" method="POST" id="mqttform">
+        <input type="checkbox" id="mqtt" value="%MQTTENABLE">
+        </form>
         <form action="/post">
         <div class="row">
                 <div class="col-sm">
-                    <label for="server"> MQTT Server Address:</label>
-                    <input type="text" class="form-control" id="svr" value="%SERVER%">
+                    <label for="svr"> MQTT Server Address:</label>
+                    <input type="text" class="form-control mqttenable" id="svr" value="%SERVER%">
                 </div>
                 <div class="col-sm">
                     <label for="topic"> Base Topic:</label>
-                    <input type="text" class="form-control" id="topic" value="%BASETOPIC%">
+                    <input type="text" class="form-control mqttenable" id="topic" value="%BASETOPIC%">
                 </div>
         </div>
         <div class="row">
                 <div class="col-sm">
                     <label for="username">username:</label>
-                    <input type="text" class="form-control" id="usr" value="%USERNAME%">
+                    <input type="text" class="form-control mqttenable" id="usr" value="%USERNAME%">
                 </div>
                 <div class="col-sm">
                     <label for="password">password:</label>
-                    <input type="password" class="form-control" id="pwd" value="%PASS%">
+                    <input type="password" class="form-control mqttenable" id="pwd" value="%PASS%">
                 </div>
         </div>
         </form>
@@ -80,38 +89,11 @@
             <div class="col-sm"></div>
             <div class="col-sm">
                 <br>
-                <button class="btn btn-success">Submit</button>
+                <button class="btn btn-success mqttenable">Submit</button>
             </div>
             <div class="col-sm"></div>
         </div>
     </div>
-
-
-    <!-- <div class="container-fluid bg-3 text-center colors">
-        <h3>Other Colors</h3>
-        <div class="row">
-            <div class="col-sm">
-                <label for="red">red: </label>
-                <input type="range" class="custom-range" min="0" max="255" value="%REDV%" id="red">
-                <span id="redval"></span>
-            </div>
-            <div class="col-sm">
-                <label for="green">green: </label>
-                <input type="range" class="custom-range" min="0" max="255" value="%GREENV%" id="green">
-                <span id="greenval"></span>
-            </div>
-            <div class="col-sm">
-                <label for="blue">blue: </label>
-                <input type="range" class="custom-range" min="0" max="255" value="%BLUEV%" id="blue">
-                <span id="blueval"></span>
-            </div>
-            <div class="col-sm">
-                <label for="white">white: </label>
-                <input type="range" class="custom-range" min="0" max="255" value="%WHITEV%" id="white">
-                <span id="whiteval"></span>
-            </div>
-        </div>
-    </div> -->
 </body>
 <script>
     $("#settings").click(function () {
@@ -122,34 +104,67 @@
         $(".bg-2").hide();
         $(".bg-3").toggle();
     })
+    console.log("%MQTTENABLE%")
+    
+    $(document).ready(function(e) {
+        $("#mqtt").change(function() { 
+            if($("#mqtt").is(":checked")) { 
+                $.ajax({    
+                    url: '/post',
+                    type: 'POST',
+                    data: { "mqtt": "on" }
+                });
+                $(".mqttenable").prop('disabled', false);
+                console.log("on")
+            } else {
+                $.ajax({
+                    url: '/post',
+                    type: 'POST',
+                    data: { "mqtt": "off" }
+                });
+                $(".mqttenable").prop('disabled', true);
+                console.log("off")
 
-    var sliderred = document.getElementById("red");
-    var outputred = document.getElementById("redval");
-    outputred.innerHTML = sliderred.value;
-    var slidergreen = document.getElementById("green");
-    var outputgreen = document.getElementById("greenval");
-    outputgreen.innerHTML = slidergreen.value;
-    var sliderblue = document.getElementById("blue");
-    var outputblue = document.getElementById("blueval");
-    outputblue.innerHTML = sliderblue.value;
-    var sliderwhite = document.getElementById("white");
-    var outputwhite = document.getElementById("whiteval");
-    outputwhite.innerHTML = sliderwhite.value;
-     // Display the default slider value
-
-    // Update the current slider value (each time you drag the slider handle)
-    sliderred.oninput = function () {
-        outputred.innerHTML = this.value;
-    }
-    slidergreen.oninput = function () {
-        outputgreen.innerHTML = this.value;
-    }
-    sliderblue.oninput = function () {
-        outputblue.innerHTML = this.value;
-    }
-    sliderwhite.oninput = function () {
-        outputwhite.innerHTML = this.value;
-    }
+            }
+        }); 
+        $("#redButton").click(function () {
+            $.ajax({    
+                    url: '/post',
+                    type: 'POST',
+                    data: { "color": [255,0,0,0]  }
+            });
+            //alert("red")
+        })
+        $("#greenButton").click(function () {
+            $.ajax({    
+                    url: '/post',
+                    type: 'POST',
+                    data: { "color": [0,255,0,0] }
+            });
+            //alert("green")
+        })
+        $("#yellowButton").click(function () {
+            $.ajax({    
+                    url: '/post',
+                    type: 'POST',
+                    data: { "color": [255,255,0,0] }
+            });
+        })   
+        $("#blueButton").click(function () {
+            $.ajax({    
+                    url: '/post',
+                    type: 'POST',
+                    data: { "color": [0,0,255,0]  }
+            });
+        })   
+        $("#whiteButton").click(function () {
+            $.ajax({    
+                    url: '/post',
+                    type: 'POST',
+                    data: { "color": [0,0,0,255] }
+            });
+        })      
+    });
 </script>
 <footer class="container-fluid bg-4 text-center">
     <p>RGBW Strip Controller

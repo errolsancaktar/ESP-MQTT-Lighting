@@ -1,6 +1,8 @@
 
 //Libs
 #include "config.h"
+#include "esp_light_mqtt.cpp"
+#include "esp_light_wifi.cpp"
 
 
 //EEPROM Stuff
@@ -24,6 +26,8 @@ void loadConfig() {
 };
 
 
+
+// Light Controls
 void turnOff() {
   analogWrite(REDPIN, 0);
   analogWrite(GREENPIN, 0);
@@ -31,87 +35,6 @@ void turnOff() {
   analogWrite(WHITEPIN, 0);
   brightness = 0;
   checkState();
-}
-
-// Setup Wifi and AP Mode
-void configModeCallback (AsyncWiFiManager *wifiManager) {
-  Serial.println("Entered config mode");
-  Serial.println(WiFi.softAPIP());
-  //if you used auto generated SSID, print it
-  Serial.println(wifiManager->getConfigPortalSSID());
-}
-AsyncWebServer server(80);
-
-WiFiClient espClient;
-PubSubClient client(*settings.MQTT_SERVER, 1883, callback, espClient);
-PubSubClientTools mqtt(client);
-
-
-bool publishStatus(String topic, String pubStatus, String pubState, int pubR, int pubG, int pubB, int pubW, int pubBrightness){
-  // Build Json MQTT Message
-  JsonObject root = doc.to<JsonObject>();
-  root["status"] = pubStatus.c_str();
-  root["state"] = pubState.c_str();
-  root["brightness"] = pubBrightness;
-  root["white_value"] = pubW;
-  JsonArray data = root.createNestedArray("rgb");
-  data.add(pubR);
-  data.add(pubG);
-  data.add(pubB);
-  serializeJson(doc, buffer);
-  mqtt.publish(topic,buffer);
-  return true;
-}
-void callback(char* topic, byte* payload, unsigned int length) {
-
-  StaticJsonDocument<400> jsonpl;
-  deserializeJson(jsonpl, payload, length);
-  JsonObject data = jsonpl.as<JsonObject>();
-  if(data.containsKey("state")){
-    state = data["state"].as<String>();
-    if(state == "ON"){
-      r = 0;
-      g = 0;
-      b = 0;
-      w = 255;
-      brightness = 100;
-    }
-  }
-  if(data.containsKey("brightness")){
-    brightness = data["brightness"];
-  }
-  if(data.containsKey("rgb")){
-    r = data["rgb"][0];
-    g = data["rgb"][1];
-    b = data["rgb"][2];
-  }
-  if(data.containsKey("white_value")){
-    w = data["white_value"];
-  }
-  if(state == "OFF"){
-    turnOff();
-    publishStatus(settings.baseTopic + "info","online","OFF",0,0,0,0,0);
-  }else if(state == "ON"){
-    if (setColor(r, g, b, w, brightness)) {
-      //mqtt.publish(baseTopic + "brightness", String(brightness), true);
-      //mqtt.publish(baseTopic + "white_value", String(w), true);
-      //String rgbcolor = "[" + String(r) + "," + String(g) + "," + String(b) + "]";
-      //mqtt.publish(baseTopic + "rgb", rgbcolor, true);
-      publishStatus(settings.baseTopic + "info","online",state,r,g,b,w,brightness);
-    }
-  }
-}
-
-boolean reconnect() {
-  if (client.connect(*settings.clientName, *settings.MQTT_USER, *settings.MQTT_PASS, statusTopic, 1, 1, "offline")) {
-
-    //mqtt.publish(baseTopic + "status", "online", true);
-    mqtt.publish(settings.baseTopic + "ip", ipAdd, true);
-    mqtt.publish(settings.baseTopic + "mac", macAdd, true);
-    lastReconnectAttempt = 0;
-    return client.connected();
-  }
-  return client.connected();
 }
 
 bool setColor(int r, int g, int b, int w, int brightness) {
@@ -123,6 +46,11 @@ bool setColor(int r, int g, int b, int w, int brightness) {
   analogWrite(GREENPIN, g);
   analogWrite(BLUEPIN, b);
   analogWrite(WHITEPIN, w);
+  // Store last color value
+  settings.lastRed = r;
+  settings.lastGreen = g;
+  settings.lastBlue = b;
+  settings.lastWhite = w;
   return true;
 }
 
@@ -135,29 +63,8 @@ bool checkState() {
   return true;
 }
 
-// Dynamic Callbacks
-String processor(const String& var){
-  Serial.println(var);
-  if(var == "SERVER"){
-    Serial.print(*settings.MQTT_SERVER);
-    return *settings.MQTT_SERVER;
-  }else if (var == "BASETOPIC")
-  {
-    Serial.print(settings.baseTopic);
-    return settings.baseTopic;   
-  }
-  else if (var == "USERNAME")
-  {
-    Serial.print(*settings.MQTT_USER);
-    return *settings.MQTT_USER;   
-  }
-  else if (var == "PASS")
-  {
-    Serial.print(*settings.MQTT_PASS);
-    return *settings.MQTT_PASS;  
-  }  
-  return String();
-}
+
+
 //##//##//##//##  Setup
 
 void setup() {
@@ -224,16 +131,24 @@ void setup() {
 
   server.on("/post", HTTP_POST, [](AsyncWebServerRequest *request){
     String message;
-    if (request->hasParam("svr", true)) {
-        message = request->getParam("svr", true)->value();
-        message.toCharArray(*settings.MQTT_SERVER, 100);
-    } else {
-        message = "No message sent";
+    if (request->hasParam("mqttstatus", true)){
+      settings.mqttenable = request->getParam("mqttstatus", true)->value();
+    }
+    if(settings.mqttenable == "on"){}
+      if (request->hasParam("svr", true)) {
+          message = request->getParam("svr", true)->value();
+          message.toCharArray(*settings.MQTT_SERVER, 100);
+      } else {
+          message = "No message sent";
+      }
+    if(request->hasParam("color", true)){
+      setcolor(color[0], color[1], color[2], color[3], 255); //set color from array sent over post data
+
     }
     Serial.println(message);
     request->redirect("/");
   });
-  
+
   server.on("/main.css", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(LittleFS, "/main.css", "text/css");
   });
@@ -283,7 +198,7 @@ void setup() {
   });
 
 
-  if(settings.MQTT_SERVER != NULL){
+  if(settings.mqttenable != "on"){ 
     // set LWT
     settings.baseTopic.toCharArray(statusTopic,30);
     strcat(statusTopic, "info");
@@ -309,7 +224,7 @@ void setup() {
 }
 
 void loop() {
-  if(settings.MQTT_SERVER != NULL){  
+  if(settings.mqttenable != "on"){  
     long now = millis();
     if (!client.connected()) {
       if (now - lastReconnectAttempt > 5000) {
