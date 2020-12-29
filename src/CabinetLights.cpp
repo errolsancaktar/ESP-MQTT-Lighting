@@ -76,7 +76,7 @@ void setup() {
 
 
   //init webota
-  //webota.init(8080, "/update");
+  //webota.init(8080, "/update"); //<-- need to add updating back in
   // Wait for connection
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
@@ -100,9 +100,14 @@ void setup() {
   server.begin();
   Serial.println("HTTP server started");
 
+// ---------- Root  ---------- //
+
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(LittleFS, "/index.html", String(), false, processor);
   });
+
+
+// ---------- POST DATA  ---------- //
 
   server.on("/post", HTTP_POST, [](AsyncWebServerRequest *request){
     String message;
@@ -117,12 +122,14 @@ void setup() {
           message = "No message sent";
       }
     if(request->hasParam("color", true)){
-      setcolor(color[0], color[1], color[2], color[3], 255); //set color from array sent over post data
+      setColor(color[0], color[1], color[2], color[3], 255); //set color from array sent over post data
 
     }
     Serial.println(message);
     request->redirect("/");
   });
+
+// ---------- CSS  ---------- //
 
   server.on("/main.css", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(LittleFS, "/main.css", "text/css");
@@ -172,7 +179,7 @@ void setup() {
     request->send(404);
   });
 
-
+// MQTT Stuff
   if(settings.mqttenable != "on"){ 
     // set LWT
     settings.baseTopic.toCharArray(statusTopic,30);
@@ -197,8 +204,9 @@ void setup() {
     mqtt.publish(settings.baseTopic + "uptime", (String)uptime);
   }
 }
-
+//
 void loop() {
+  // MQTT Enabled
   if(settings.mqttenable != "on"){  
     long now = millis();
     if (!client.connected()) {
@@ -221,8 +229,10 @@ void loop() {
       lastUpdate = now;
     }
   }
+  // Check light state
   checkState();
 
+//Handle reboot if needed and post about it
   if (uptime > 2000000000) {
     *settings.MQTT_SERVER != NULL ? mqtt.publish(settings.baseTopic + "info", "restart", true): NULL ;
     ESP.restart();
