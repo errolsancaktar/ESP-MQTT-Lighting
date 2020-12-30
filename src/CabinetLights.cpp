@@ -16,28 +16,14 @@
 
 //Libs
 #include "config.h"
+#include <stdlib.h>
 
 
-//EEPROM Stuff
-void saveConfig() {
-  // Save configuration from RAM into EEPROM
-  EEPROM.begin(4095);
-  EEPROM.put( cfgStart, settings );
-  delay(200);
-  EEPROM.commit();                      // Only needed for ESP8266 to get data written
-  EEPROM.end();                         // Free RAM copy of structure
-}
-
-void loadConfig() {
-  // Loads configuration from EEPROM into RAM
-  Serial.println("Loading EEPROM config");
-  persistData load;
-  EEPROM.begin(4095);
-  EEPROM.get( cfgStart, load);
-  EEPROM.end();
-  settings = load;
-};
-
+// Definitions
+char charBuf[50];
+int brightness;
+String state;
+int uptime;
 
 
 //##//##//##//##  Setup
@@ -53,9 +39,11 @@ void setup() {
   pinMode(BLUEPIN, OUTPUT);
   pinMode(WHITEPIN, OUTPUT);
 
+
+
+
   //WiFiManager
   //set callback that gets called when connecting to previous WiFi fails, and enters Access Point mode
-  AsyncWiFiManager wifiManager(&server,&dns);
   wifiManager.setAPCallback(configModeCallback);
   wifiManager.setConfigPortalTimeout(180);
   wifiManager.autoConnect("LEDController");
@@ -69,9 +57,9 @@ void setup() {
 
   //if you get here you have connected to the WiFi
   Serial.println("connected...winning");
-  ip = WiFi.localIP().toString();
+  String ip = WiFi.localIP().toString();
   ip.toCharArray(ipAdd, 20);
-  mac = WiFi.macAddress();
+  String mac = WiFi.macAddress();
   mac.toCharArray(macAdd, 30);
 
 
@@ -122,7 +110,15 @@ void setup() {
           message = "No message sent";
       }
     if(request->hasParam("color", true)){
-      setColor(color[0], color[1], color[2], color[3], 255); //set color from array sent over post data
+      char charBuf[30];
+      (request->getParam("color", true)->value()).toCharArray(charBuf,30);
+      long int rgb = atol(charBuf);
+      byte r=(byte)(rgb>>16);
+      byte g=(byte)(rgb>>8);
+      byte b=(byte)(rgb);
+      if(setColor(r,g,b, 255)){
+
+      }; //set color from array sent over post data
 
     }
     Serial.println(message);
@@ -234,7 +230,9 @@ void loop() {
 
 //Handle reboot if needed and post about it
   if (uptime > 2000000000) {
-    *settings.MQTT_SERVER != NULL ? mqtt.publish(settings.baseTopic + "info", "restart", true): NULL ;
+    if(*settings.MQTT_SERVER){
+      mqtt.publish(settings.baseTopic + "info", "restart", true);
+    }
     ESP.restart();
   }
 }

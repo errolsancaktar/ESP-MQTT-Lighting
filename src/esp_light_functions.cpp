@@ -17,6 +17,10 @@
 #ifndef _esp_light_func
 #define _esp_light_func
 #include "config.h"
+int r;
+int g;
+int b;
+int w;
 
 // Light Controls
 void turnOff() {
@@ -43,6 +47,14 @@ bool setColor(int r, int g, int b, int w, int brightness) {
   settings.lastBlue = b;
   settings.lastWhite = w;
   return true;
+}
+int getColor(){
+    int colors[4];
+    colors[0] = settings.lastRed;
+    colors[1] = settings.lastGreen;
+    colors[2] = settings.lastBlue;
+    colors[3] = settings.lastWhite;
+    return *colors;
 }
 
 bool checkState() {

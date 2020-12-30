@@ -18,12 +18,34 @@
 #include "config.h"
 
 
-AsyncWebServer server(80);
+persistData settings = {
+  "",
+  ""
+};
+
+//EEPROM Stuff
+void saveConfig() {
+  // Save configuration from RAM into EEPROM
+  EEPROM.begin(4095);
+  EEPROM.put( cfgStart, settings );
+  delay(200);
+  EEPROM.commit();                      // Only needed for ESP8266 to get data written
+  EEPROM.end();                         // Free RAM copy of structure
+}
+void loadConfig() {
+  // Loads configuration from EEPROM into RAM
+  Serial.println("Loading EEPROM config");
+  persistData load;
+  EEPROM.begin(4095);
+  EEPROM.get( cfgStart, load);
+  EEPROM.end();
+  settings = load;
+};
 
 // Dynamic Callbacks
 String processor(const String& var){
   Serial.println(var);
-  if(var == "SERVER"){
+  if(var == "SERVER"){\
     Serial.print(*settings.MQTT_SERVER);
     return *settings.MQTT_SERVER;
   }else if (var == "BASETOPIC"){
@@ -37,14 +59,10 @@ String processor(const String& var){
     return *settings.MQTT_PASS;  
   }else if (var == "MQTTENABLE"){
     return settings.mqttenable;
-  }else if (var == "HEXCOLOR"){
-    if(hexcolor == NULL){
-      return "000000";
-    }else{
-      return hexcolor;
-    }
-    return String();
+  }else if (var == "CURRENT_COLOR"){
+    return settings.mqttenable;
   }
+    return String();
 }
 
 

@@ -16,9 +16,19 @@
 #ifndef _esp_light_mqtt
 #define _esp_light_mqtt
 #include "config.h"
-
+//#include <PubSubClient.h>
+//#include <PubSubClientTools.h>
+//#include <ArduinoJson.h>
+long lastReconnectAttempt = 0;
+long lastUpdate = 0;
+WiFiClient espClient;
 PubSubClient client(*settings.MQTT_SERVER, 1883, callback, espClient);
 PubSubClientTools mqtt(client);
+char ipAdd[20];
+char macAdd[30];
+char statusTopic[50];
+char buffer[512];
+StaticJsonDocument<200> doc;
 
 
 bool publishStatus(String topic, String pubStatus, String pubState, int pubR, int pubG, int pubB, int pubW, int pubBrightness){

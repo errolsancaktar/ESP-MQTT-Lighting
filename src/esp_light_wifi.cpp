@@ -16,11 +16,8 @@
 #ifndef _esp_light_wifi
 #define _esp_light_wifi
 #include "config.h"
-
-
-AsyncWebServer server(80);
-
-WiFiClient espClient;
+#include <ESPAsyncWiFiManager.h> 
+#include "esp_light_wifi.h"
 
 // Setup Wifi and AP Mode
 void configModeCallback (AsyncWiFiManager *wifiManager) {
