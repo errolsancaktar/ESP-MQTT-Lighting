@@ -74,23 +74,19 @@ void callback(char* topic, byte* payload, unsigned int length) {
   }
   if(state == "OFF"){
     turnOff();
-    publishStatus(settings.baseTopic + "info","online","OFF",0,0,0,0,0);
+    publishStatus(String(settings.baseTopic) + "info","online","OFF",0,0,0,0,0);
   }else if(state == "ON"){
     if (setColor(r, g, b, w, brightness)) {
-      //mqtt.publish(baseTopic + "brightness", String(brightness), true);
-      //mqtt.publish(baseTopic + "white_value", String(w), true);
-      //String rgbcolor = "[" + String(r) + "," + String(g) + "," + String(b) + "]";
-      //mqtt.publish(baseTopic + "rgb", rgbcolor, true);
-      publishStatus(settings.baseTopic + "info","online",state,r,g,b,w,brightness);
+      publishStatus(String(settings.baseTopic) + "info","online",state,r,g,b,w,brightness);
     }
   }
 }
 boolean reconnect() {
-  if (client.connect(*settings.clientName, *settings.MQTT_USER, *settings.MQTT_PASS, statusTopic, 1, 1, "offline")) {
+  if (client.connect(settings.clientName, settings.MQTT_USER, settings.MQTT_PASS, statusTopic, 1, 1, "offline")) {
 
     //mqtt.publish(baseTopic + "status", "online", true);
-    mqtt.publish(settings.baseTopic + "ip", ipAdd, true);
-    mqtt.publish(settings.baseTopic + "mac", macAdd, true);
+    mqtt.publish(String(settings.baseTopic) + "ip", ipAdd, true);
+    mqtt.publish(String(settings.baseTopic) + "mac", macAdd, true);
     lastReconnectAttempt = 0;
     return client.connected();
   }

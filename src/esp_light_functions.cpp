@@ -17,10 +17,14 @@
 #ifndef _esp_light_func
 #define _esp_light_func
 #include "config.h"
+
 int r;
 int g;
 int b;
 int w;
+int rgb[3];
+
+
 
 // Light Controls
 void turnOff() {
@@ -33,28 +37,36 @@ void turnOff() {
 }
 
 bool setColor(int r, int g, int b, int w, int brightness) {
-  r = r * brightness / 100;
-  g = g * brightness / 100;
-  b = b * brightness / 100;
-  w = w * brightness / 100;
-  analogWrite(REDPIN, r);
-  analogWrite(GREENPIN, g);
-  analogWrite(BLUEPIN, b);
-  analogWrite(WHITEPIN, w);
+  Serial.println("IN SET COLOR");
+  // Convert for Lights in RGB
+  int red = r * brightness / 100;
+  int green = g * brightness / 100;
+  int blue = b * brightness / 100;
+  int white = w * brightness / 100;
+  analogWrite(REDPIN, red);
+  analogWrite(GREENPIN, green);
+  analogWrite(BLUEPIN, blue);
+  analogWrite(WHITEPIN, white);
   // Store last color value
   settings.lastRed = r;
   settings.lastGreen = g;
   settings.lastBlue = b;
   settings.lastWhite = w;
+  saveConfig();
+  // Serial.println("Set color to: ");
+  // Serial.println(*settings.lastRed);
+  // Serial.println(*settings.lastGreen);
+  // Serial.println(*settings.lastBlue);
+  // Serial.println(*settings.lastWhite);
   return true;
 }
-int getColor(){
-    int colors[4];
-    colors[0] = settings.lastRed;
-    colors[1] = settings.lastGreen;
-    colors[2] = settings.lastBlue;
-    colors[3] = settings.lastWhite;
-    return *colors;
+String getColor(){
+  Serial.println("IN GET COLOR");
+  if((settings.lastColor).length() > 0){
+    return settings.lastColor;
+  }else{
+    return "FFFFFF";
+  }
 }
 
 bool checkState() {
@@ -66,7 +78,16 @@ bool checkState() {
   return true;
 }
 
-
-
+void hexToRgb(String hex){
+  settings.lastColor = hex;
+  saveConfig();
+  int number = (int) strtol( &hex[0], NULL, 16);
+      rgb[0] = number >> 16;
+      rgb[1] = number >> 8 & 0xFF;
+      rgb[2] = number & 0xFF;
+  // Serial.println(rgb[0]);
+  // Serial.println(rgb[1]);
+  // Serial.println(rgb[2]);
+}
 
 #endif

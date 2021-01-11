@@ -19,19 +19,37 @@
 #include <stdlib.h>
 
 
+
+
+
 // Definitions
 char charBuf[50];
 int brightness;
 String state;
 int uptime;
+bool shouldReboot;
+persistData settings;
 
 
+//  Setup Debugging
+//#define DEBUG
+#define DEBUG true  //set to true for debug output, false for no debug ouput
+#ifdef DEBUG
+  #define Serial Serial
+#else
+  #define Serial {...}
+#endif
 //##//##//##//##  Setup
 
 void setup() {
   // Set up Serial Logging
   Serial.begin(115200);
   Serial.println("Starting Setup Func");
+  // *settings.MQTT_SERVER = "10.10.9.38";
+  // *settings.MQTT_USER = "homeassistant";
+  // settings.mqttenable = "on";
+
+ 
 
   //Setup LED Pins
   pinMode(REDPIN, OUTPUT);
@@ -63,12 +81,10 @@ void setup() {
   mac.toCharArray(macAdd, 30);
 
 
-  //init webota
-  //webota.init(8080, "/update"); //<-- need to add updating back in
   // Wait for connection
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
-    Serial.print(".");
+    Serial.printf(".");
   }
 
 
@@ -83,6 +99,9 @@ void setup() {
 
 
 
+ // Load Previous Settings
+  loadConfig();
+  Serial.println(settings.mqttenable);
 // Web Server Stuff
 
   server.begin();
@@ -93,38 +112,144 @@ void setup() {
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(LittleFS, "/index.html", String(), false, processor);
   });
+  server.on("/favicon.ico", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(LittleFS, "/favicon.ico", "image/png");
+  });
 
+// ---------- Get Color  ---------- //
+
+   server.on("/getColor", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(200, "text/plain", settings.lastColor);
+    Serial.print("Current Color: ");
+    Serial.println(settings.lastColor);
+  });
 
 // ---------- POST DATA  ---------- //
 
-  server.on("/post", HTTP_POST, [](AsyncWebServerRequest *request){
+   server.on("/post", HTTP_POST, [](AsyncWebServerRequest *request){
     String message;
-    if (request->hasParam("mqttstatus", true)){
-      settings.mqttenable = request->getParam("mqttstatus", true)->value();
-    }
-    if(settings.mqttenable == "on"){}
-      if (request->hasParam("svr", true)) {
-          message = request->getParam("svr", true)->value();
-          message.toCharArray(*settings.MQTT_SERVER, 100);
-      } else {
-          message = "No message sent";
+    Serial.println("got post data");
+     if(DEBUG){ 
+      int args = request->args();
+      for(int i=0;i<args;i++){
+        Serial.printf("ARG[%s]: %s\n", request->argName(i).c_str(), request->arg(i).c_str());
       }
-    if(request->hasParam("color", true)){
-      char charBuf[30];
-      (request->getParam("color", true)->value()).toCharArray(charBuf,30);
-      long int rgb = atol(charBuf);
-      byte r=(byte)(rgb>>16);
-      byte g=(byte)(rgb>>8);
-      byte b=(byte)(rgb);
-      if(setColor(r,g,b, 255)){
-
-      }; //set color from array sent over post data
-
+      int params = request->params();
+      for(int i=0;i<params;i++){
+        AsyncWebParameter* p = request->getParam(i);
+        if(p->isFile()){ //p->isPost() is also true
+          Serial.printf("FILE[%s]: %s, size: %u\n", p->name().c_str(), p->value().c_str(), p->size());
+        } else if(p->isPost()){
+          Serial.printf("POST[%s]: %s\n", p->name().c_str(), p->value().c_str());
+        } else {
+          Serial.printf("GET[%s]: %s\n", p->name().c_str(), p->value().c_str());
+        }
+      }
     }
-    Serial.println(message);
+
+     if (request->hasParam("MQTT", true)){
+      settings.mqttenable = request->getParam("MQTT", true)->value().c_str();
+      Serial.println(settings.mqttenable);
+      saveConfig();
+    }
+    if(settings.mqttenable == "on"){
+      if (request->hasParam("SERVER", true)) {
+          Serial.println("IN SERVER PARAM");
+          message = request->getParam("SERVER", true)->value();
+          Serial.println(message);
+          if(message.length() > 0){
+            message.toCharArray(settings.MQTT_SERVER, 100);
+          }
+      }
+       else {
+          message = "No Server message sent";
+      }
+      if (request->hasParam("BASETOPIC", true)) {
+          Serial.println("IN BASETOPIC PARAM");
+          if((request->getParam("BASETOPIC", true)->value()).length() > 0){
+            settings.baseTopic = request->getParam("BASETOPIC", true)->value();
+            Serial.println(settings.baseTopic.length());
+            Serial.println(settings.baseTopic);
+          }
+      }
+       else {
+          message = "No Basetopic message sent";
+      }
+      if (request->hasParam("USERNAME", true)) {
+          Serial.println("IN USERNAME PARAM");
+          message = request->getParam("USERNAME", true)->value();
+          Serial.println(message);
+          Serial.println(message.length());
+          if(message.length() > 0){
+            message.toCharArray(settings.MQTT_USER, 100);
+          }
+      }
+       else {
+          message = "No USERNAME message sent";
+      }
+      if (request->hasParam("PASS", true)) {
+          Serial.println("IN PASS PARAM");
+          message = request->getParam("PASS", true)->value();
+          Serial.println(message);
+          if(message.length() > 0){
+            message.toCharArray(settings.MQTT_PASS, 100);
+          }
+      }
+       else {
+          message = "No PASS message sent";
+      }
+   //}  
+    if(request->hasParam("color", true)){
+      Serial.println("IN COLOR POST DATA");
+      message = request->getParam("color", true)->value();
+      if(message == "FFFFFF"){
+        settings.lastColor = "FFFFFF";
+        setColor();
+      }else{
+      hexToRgb(message);
+      // Serial.println(message);
+      // for(int i = 0; i<3; i++){
+      //   Serial.println(rgb[i]);
+      // }
+      setColor(rgb[0], rgb[1], rgb[2], 0, 255);
+      
+      }
+    }
+     Serial.println(message);
     request->redirect("/");
+    }
   });
 
+// ---------- Firmaware Update  ---------- //
+    server.on("/update", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(200, "text/html", "<form method='POST' action='/update' enctype='multipart/form-data'><input type='file' name='update'><input type='submit' value='Update'></form>");
+  });
+  server.on("/update", HTTP_POST, [](AsyncWebServerRequest *request){
+    shouldReboot = !Update.hasError();
+    AsyncWebServerResponse *response = request->beginResponse(200, "text/plain", shouldReboot?"OK":"FAIL");
+    response->addHeader("Connection", "close");
+    request->send(response);
+  },[](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final){
+    if(!index){
+      Serial.printf("Update Start: %s\n", filename.c_str());
+      Update.runAsync(true);
+      if(!Update.begin((ESP.getFreeSketchSpace() - 0x1000) & 0xFFFFF000)){
+        Update.printError(Serial);
+      }
+    }
+    if(!Update.hasError()){
+      if(Update.write(data, len) != len){
+        Update.printError(Serial);
+      }
+    }
+    if(final){
+      if(Update.end(true)){
+        Serial.printf("Update Success: %uB\n", index+len);
+      } else {
+        Update.printError(Serial);
+      }
+    }
+  });
 // ---------- CSS  ---------- //
 
   server.on("/main.css", HTTP_GET, [](AsyncWebServerRequest *request){
@@ -178,30 +303,33 @@ void setup() {
 // MQTT Stuff
   if(settings.mqttenable != "on"){ 
     // set LWT
-    settings.baseTopic.toCharArray(statusTopic,30);
     strcat(statusTopic, "info");
 
     // Initial MQTT Setup
-    client.connect(*settings.clientName, *settings.MQTT_USER, *settings.MQTT_PASS, statusTopic, 1, 1, "offline");
+    client.connect(settings.clientName, settings.MQTT_USER, settings.MQTT_PASS, statusTopic, 1, 1, "offline");
   //  mqtt.publish(baseTopic + "status", "online", true);
-    mqtt.publish(settings.baseTopic + "ip", ipAdd, true);
-    mqtt.publish(settings.baseTopic + "mac", macAdd, true);
+    mqtt.publish(String(settings.baseTopic) + "ip", ipAdd, true);
+    mqtt.publish(String(settings.baseTopic) + "mac", macAdd, true);
 
     // Define Callback func
     client.setCallback(callback);
 
     // Subscribe to MQTT Set Topic
-    settings.baseTopic.toCharArray(charBuf,30);
     strcat(charBuf, "set");
     client.subscribe(charBuf);
     state = "OFF";
-    publishStatus(settings.baseTopic + "info", "online", state,0,0,0,0,0);
+    publishStatus(String(settings.baseTopic) + "info", "online", state,0,0,0,0,0);
     uptime = millis();
-    mqtt.publish(settings.baseTopic + "uptime", (String)uptime);
+    mqtt.publish(String(settings.baseTopic) + "uptime", (String)uptime);
   }
 }
 //
 void loop() {
+  if(shouldReboot){
+    Serial.println("Rebooting...");
+    delay(100);
+    ESP.restart();
+  }
   // MQTT Enabled
   if(settings.mqttenable != "on"){  
     long now = millis();
@@ -219,9 +347,9 @@ void loop() {
     }
     if(now - lastUpdate > 30000){
       uptime = millis();
-      mqtt.publish(settings.baseTopic + "uptime", (String)uptime);
+      mqtt.publish(String(settings.baseTopic) + "uptime", (String)uptime);
       checkState();
-      publishStatus(settings.baseTopic + "info", "online",state,r,g,b,w,brightness);
+      publishStatus(String(settings.baseTopic) + "info", "online",state,r,g,b,w,brightness);
       lastUpdate = now;
     }
   }
@@ -231,7 +359,7 @@ void loop() {
 //Handle reboot if needed and post about it
   if (uptime > 2000000000) {
     if(*settings.MQTT_SERVER){
-      mqtt.publish(settings.baseTopic + "info", "restart", true);
+      mqtt.publish(String(settings.baseTopic) + "info", "restart", true);
     }
     ESP.restart();
   }

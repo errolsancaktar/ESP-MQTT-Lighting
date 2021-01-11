@@ -35,140 +35,160 @@
         <button id="blueButton" class="btn btn-lg btn-primary">Blue</button>
         <button id="whiteButton" class="btn btn-lg btn-light">White</button>
     </div>
-    <div class="container-fluid text-center">
+    <div id="base" class="container-fluid text-center" style="{color:000000}">
+        <h2>Current Color</h2>
+        <H3 id="lcolor">%LCOLOR%</H3>
         <form action="/post" method="POST" class="colorForm">
-        <h3 class="colorForm" value="">Current Color: <BR> %CURRENT_COLOR%</h3>
             <label class="colorForm" for="color">Hex Color: #</label>
-            <!--<input type="text" id="color" value="%HEXCOLOR%">-->
             <input type="text" id="color" />
         </form>
         <label for="mqtt">MQTT Enabled: </label>
             <form action="/post" method="POST" id="mqttform">
-            <input type="checkbox" id="mqtt" value="%MQTTENABLE">
+            <input type="checkbox" id="MQTT" value="%MQTT%">
         </form>
     </div>
     <div class="container-fluid bg-2 text-center settings">
         <h3>Settings</h3>
-        <form action="/post">
+        <form method="POST" action="/post">
         <div class="row">
                 <div class="col-sm">
-                    <label for="svr"> MQTT Server Address:</label>
-                    <input type="text" class="form-control mqttenable" id="svr" value="%SERVER%">
+                    <label for="SERVER"> MQTT Server Address:</label>
+                    <input type="text" name="SERVER" placeholder="%SERVER%" class="form-control mqttenable" id="SERVER">
                 </div>
                 <div class="col-sm">
                     <label for="topic"> Base Topic:</label>
-                    <input type="text" class="form-control mqttenable" id="topic" value="%BASETOPIC%">
+                    <input type="text" class="form-control mqttenable" id="topic" name="BASETOPIC" placeholder="%BASETOPIC%">
                 </div>
         </div>
         <div class="row">
                 <div class="col-sm">
-                    <label for="username">username:</label>
-                    <input type="text" class="form-control mqttenable" id="usr" value="%USERNAME%">
+                    <label for="username">Username:</label>
+                    <input type="text" class="form-control mqttenable" id="usr" name="USERNAME" placeholder="%USERNAME%">
                 </div>
                 <div class="col-sm">
-                    <label for="password">password:</label>
-                    <input type="password" class="form-control mqttenable" id="pwd" value="%PASS%">
+                    <label for="password">Password:</label>
+                    <input type="password" class="form-control mqttenable" id="pwd" name="PASS" placeholder="%PASS%">
                 </div>
         </div>
+        <br>
+                <button id="mqttSubmit" type="submit" class="btn btn-success mqttenable">Submit</button>
         </form>
-        <div class="row">
-            <div class="col-sm"></div>
-            <div class="col-sm">
-                <br>
-                <button class="btn btn-success mqttenable">Submit</button>
-            </div>
-            <div class="col-sm"></div>
-        </div>
     </div>
 </body>
 <script>
-    toggleMqtt();
-    function toggleMqtt(){
-        if($("#mqtt").is(":checked")) { 
+     
+    $("#color").spectrum({
+        type: "text",
+        showPalette: false,
+    });
+    function curColor(){
+        $.ajax({
+            url:'/getColor',
+            type:"GET",
+            async: false,
+            success: function(result){
+                
+                console.log("Current Color:"); 
+                $("#lcolor").text("#" + result);
+                $('#lcolor').css("color", "#" + result);
+                console.log("Setting " + result);    
+            }
+        });
+             
+        }
+    $(document).ready(function(e) {
+        curColor();
+        $('#MQTT').change(function() { //set eeprom data based on check box
+        if ($("#MQTT").is(":checked"))  {
+                console.log("checkbox is checked")
                 $(".bg-2").show();
                 $.ajax({    
                     url: '/post',
                     type: 'POST',
-                    data: { "mqtt": "on" }
+                    data: { "MQTT": "on" }
                 });
-                //$(".mqttenable").prop('disabled', false);
                 console.log("on")
             } else {
+                console.log("checkbox is checked")
                 $(".bg-2").hide();
                 $.ajax({
                     url: '/post',
                     type: 'POST',
-                    data: { "mqtt": "off" }
+                    data: { "MQTT": "off" }
                 });
-               // $(".mqttenable").prop('disabled', true);
                 console.log("off")
 
             }
-    }
-    $("#color").spectrum({
-        showPalette: false,
-        allowEmpty: true,
-    });
-    $(document).ready(function(e) {
-        
-        $("#mqtt").change(function() { 
-            toggleMqtt();
-        }); 
+        });
+        // console.log("%MQTT%");
+        // console.log("%LCOLOR%");        
+        if("%MQTT%" == "on"){ //if eeprom settings have mqtt enabled set correct state
+            $(".bg-2").show();
+            $( "#MQTT" ).prop( "checked", true );
+        }else{
+            $(".bg-2").hide();
+            $( "#MQTT" ).prop( "checked", false );
+        }
         $("#redButton").click(function () {
             $.ajax({    
                     url: '/post',
                     type: 'POST',
-                    data: { "color": [255,0,0,0]  }
+                    data: { "color": "FF0000" },
+                    async: false
             });
+            curColor();
             //alert("red")
         })
         $("#greenButton").click(function () {
             $.ajax({    
                     url: '/post',
                     type: 'POST',
-                    data: { "color": [0,255,0,0] }
+                    data: { "color": "00FF00" },
+                    async: false
             });
+            curColor();
             //alert("green")
         })
         $("#yellowButton").click(function () {
             $.ajax({    
                     url: '/post',
                     type: 'POST',
-                    data: { "color": [255,255,0,0] }
+                    data: { "color": "FFFF00" },
+                    async: false
             });
+            curColor();
         })   
         $("#blueButton").click(function () {
             $.ajax({    
                     url: '/post',
                     type: 'POST',
-                    data: { "color": [0,0,255,0]  }
+                    data: { "color": "0000FF"  },
+                    async: false
             });
+            curColor();
         })   
         $("#whiteButton").click(function () {
             $.ajax({    
                     url: '/post',
                     type: 'POST',
-                    data: { "color": [0,0,0,255] }
+                    data: { "color": "FFFFFF" },
+                    async: false
             });
+            curColor();
         })
         $("#color").on('focusout',function () {
-        hexcode = hexToRgb($("#color").val());
-        console.log(hexcode);
+        colorCode = $("#color").spectrum("get");
+        console.log(colorCode.toHex());
         $.ajax({    
                     url: '/post',
                     type: 'POST',
-                    data: { "color": hexcode }
+                    data: { "color": colorCode.toHex() },
+                    async: false
             });        
+        curColor();
         })      
     });
-    function hexToRgb(hex) {
-    var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    return result ? {
-        r: parseInt(result[1], 16),
-        g: parseInt(result[2], 16),
-        b: parseInt(result[3], 16)
-    } : null;
-}
+
 </script>
 <footer class="container-fluid bg-4 text-center">
     <p>RGBW Strip Controller

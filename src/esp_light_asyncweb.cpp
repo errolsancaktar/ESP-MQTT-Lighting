@@ -18,52 +18,49 @@
 #include "config.h"
 
 
-persistData settings = {
-  "",
-  ""
-};
-
 //EEPROM Stuff
+// Saves Configuration
 void saveConfig() {
-  // Save configuration from RAM into EEPROM
-  EEPROM.begin(4095);
-  EEPROM.put( cfgStart, settings );
-  delay(200);
-  EEPROM.commit();                      // Only needed for ESP8266 to get data written
-  EEPROM.end();                         // Free RAM copy of structure
+  EEPROM.begin(512);
+  Serial.println("Saving Data");
+  EEPROM.put(64, settings);
+  EEPROM.end();
+  Serial.println(settings.mqttenable);
 }
 void loadConfig() {
-  // Loads configuration from EEPROM into RAM
-  Serial.println("Loading EEPROM config");
-  persistData load;
-  EEPROM.begin(4095);
-  EEPROM.get( cfgStart, load);
+// Loads configuration from Littlefs into RAM
+  EEPROM.begin(512);
+  EEPROM.get(64, settings);
+  Serial.println("Loading Data");
   EEPROM.end();
-  settings = load;
-};
+  Serial.println(settings.mqttenable);
+  
+}
 
 // Dynamic Callbacks
 String processor(const String& var){
-  Serial.println(var);
-  if(var == "SERVER"){\
-    Serial.print(*settings.MQTT_SERVER);
-    return *settings.MQTT_SERVER;
+  //Serial.println(var);
+  if(var == "SERVER"){
+    Serial.print(settings.MQTT_SERVER);
+    return String(settings.MQTT_SERVER);
   }else if (var == "BASETOPIC"){
     Serial.print(settings.baseTopic);
-    return settings.baseTopic;   
+    return String(settings.baseTopic);   
   }else if (var == "USERNAME"){
-    Serial.print(*settings.MQTT_USER);
-    return *settings.MQTT_USER;   
+    Serial.print(settings.MQTT_USER);
+    return String(settings.MQTT_USER);   
   }else if (var == "PASS"){
     Serial.print(*settings.MQTT_PASS);
-    return *settings.MQTT_PASS;  
-  }else if (var == "MQTTENABLE"){
-    return settings.mqttenable;
-  }else if (var == "CURRENT_COLOR"){
-    return settings.mqttenable;
+    return String(settings.MQTT_PASS);  
+  }else if (var == "MQTT"){
+    return String(settings.mqttenable);
+  }else if (var == "LCOLOR"){
+    if((settings.lastColor).length() > 0){
+      return settings.lastColor;
+    }else{
+      return "FFFFFF";
+    }
   }
     return String();
 }
-
-
 #endif
