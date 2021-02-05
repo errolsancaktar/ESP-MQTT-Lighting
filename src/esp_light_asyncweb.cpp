@@ -18,24 +18,86 @@
 #include "config.h"
 
 
-//EEPROM Stuff
-// Saves Configuration
-void saveConfig() {
-  EEPROM.begin(512);
-  Serial.println("Saving Data");
-  EEPROM.put(64, settings);
-  EEPROM.end();
-  Serial.println(settings.mqttenable);
-}
+
+
 void loadConfig() {
-// Loads configuration from Littlefs into RAM
-  EEPROM.begin(512);
-  EEPROM.get(64, settings);
-  Serial.println("Loading Data");
-  EEPROM.end();
-  Serial.println(settings.mqttenable);
-  
+  // Open file for reading
+  File file = LittleFS.open("/config.json", "r+");
+
+  // Allocate a temporary JsonDocument
+  // Don't forget to change the capacity to match your requirements.
+  // Use arduinojson.org/v6/assistant to compute the capacity.
+  StaticJsonDocument<512> doc;
+
+  // Deserialize the JSON document
+  DeserializationError error = deserializeJson(doc, file);
+  if (error)
+    Serial.println(F("Failed to read file, using default configuration"));
+
+  // Copy values from the JsonDocument to the Config
+  const char* MQTT_USER = doc["MQTT_USER"];
+  const char* MQTT_PASS = doc["MQTT_PASS"];
+  const char* MQTT_SERVER = doc["MQTT_SERVER"];
+  const char* baseTopic = doc["baseTopic"];
+  const char* clientName = doc["clientName"];
+  const char* mqttenable = doc["mqttenable"];
+  const char* lastColor = doc["lastColor"];
+  file.close();
+
+  strcpy(settings.MQTT_USER, const_cast<char*>(MQTT_USER) );
+  strcpy(settings.MQTT_PASS, const_cast<char*>(MQTT_PASS) );
+  strcpy(settings.MQTT_SERVER, const_cast<char*>(MQTT_SERVER));
+  strcpy(settings.baseTopic, const_cast<char*>(baseTopic) );
+  strcpy(settings.clientName, const_cast<char*>(clientName));
+  strcpy(settings.mqttenable, const_cast<char*>(mqttenable));
+  strcpy(settings.lastColor, const_cast<char*>(lastColor));
+
 }
+
+// Saves the configuration to a file
+void saveConfig() {
+
+  // Open file for writing
+  File file = LittleFS.open("/config.json", "w+");
+
+  if (!file) {
+    Serial.println(F("Failed to create file"));
+    return;
+  }
+
+  // Allocate a temporary JsonDocument
+  // Don't forget to change the capacity to match your requirements.
+  // Use arduinojson.org/assistant to compute the capacity.
+  StaticJsonDocument<256> doc;
+
+  // Set the values in the document
+  doc["MQTT_USER"] = settings.MQTT_USER;
+  doc["MQTT_PASS"] = settings.MQTT_PASS;
+  doc["MQTT_SERVER"] = settings.MQTT_SERVER;
+  doc["baseTopic"] = settings.baseTopic;
+  doc["clientName"] = settings.clientName;
+  doc["mqttenable"] = settings.mqttenable;
+  doc["lastColor"] = settings.lastColor;
+
+  // Serialize JSON to file
+  if (serializeJson(doc, file) == 0) {
+    Serial.println(F("Failed to write to file"));
+  }
+
+  // Close the file
+  file.close();
+}
+
+
+// void loadConfig() {
+// // Loads configuration from Littlefs into RAM
+//   EEPROM.begin(512);
+//   EEPROM.get(64, settings);
+//   Serial.println("Loading Data");
+//   EEPROM.end();
+//   Serial.println(mqttenable);
+// }
+
 
 // Dynamic Callbacks
 String processor(const String& var){
@@ -50,12 +112,12 @@ String processor(const String& var){
     Serial.print(settings.MQTT_USER);
     return String(settings.MQTT_USER);   
   }else if (var == "PASS"){
-    Serial.print(*settings.MQTT_PASS);
+    Serial.print(settings.MQTT_PASS);
     return String(settings.MQTT_PASS);  
   }else if (var == "MQTT"){
     return String(settings.mqttenable);
   }else if (var == "LCOLOR"){
-    if((settings.lastColor).length() > 0){
+    if(strcmp(settings.lastColor, "FFFFFF") == 0){
       return settings.lastColor;
     }else{
       return "FFFFFF";

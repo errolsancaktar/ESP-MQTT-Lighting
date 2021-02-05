@@ -29,10 +29,11 @@ String state;
 int uptime;
 bool shouldReboot;
 persistData settings;
+char statusTopic[512];
+
 
 
 //  Setup Debugging
-//#define DEBUG
 #define DEBUG true  //set to true for debug output, false for no debug ouput
 #ifdef DEBUG
   #define Serial Serial
@@ -45,9 +46,7 @@ void setup() {
   // Set up Serial Logging
   Serial.begin(115200);
   Serial.println("Starting Setup Func");
-  // *settings.MQTT_SERVER = "10.10.9.38";
-  // *settings.MQTT_USER = "homeassistant";
-  // settings.mqttenable = "on";
+
 
  
 
@@ -99,9 +98,11 @@ void setup() {
 
 
 
+
  // Load Previous Settings
   loadConfig();
   Serial.println(settings.mqttenable);
+  Serial.println(settings.MQTT_SERVER);
 // Web Server Stuff
 
   server.begin();
@@ -148,17 +149,19 @@ void setup() {
     }
 
      if (request->hasParam("MQTT", true)){
-      settings.mqttenable = request->getParam("MQTT", true)->value().c_str();
+      (request->getParam("MQTT", true)->value()).toCharArray(settings.mqttenable,3);
       Serial.println(settings.mqttenable);
       saveConfig();
     }
-    if(settings.mqttenable == "on"){
+    if(strcmp(settings.mqttenable, "on") == 0)
+    {
       if (request->hasParam("SERVER", true)) {
           Serial.println("IN SERVER PARAM");
           message = request->getParam("SERVER", true)->value();
           Serial.println(message);
           if(message.length() > 0){
             message.toCharArray(settings.MQTT_SERVER, 100);
+            saveConfig();
           }
       }
        else {
@@ -167,8 +170,8 @@ void setup() {
       if (request->hasParam("BASETOPIC", true)) {
           Serial.println("IN BASETOPIC PARAM");
           if((request->getParam("BASETOPIC", true)->value()).length() > 0){
-            settings.baseTopic = request->getParam("BASETOPIC", true)->value();
-            Serial.println(settings.baseTopic.length());
+            (request->getParam("BASETOPIC", true)->value()).toCharArray(settings.baseTopic,512);
+            saveConfig();
             Serial.println(settings.baseTopic);
           }
       }
@@ -182,6 +185,7 @@ void setup() {
           Serial.println(message.length());
           if(message.length() > 0){
             message.toCharArray(settings.MQTT_USER, 100);
+            saveConfig();
           }
       }
        else {
@@ -193,6 +197,7 @@ void setup() {
           Serial.println(message);
           if(message.length() > 0){
             message.toCharArray(settings.MQTT_PASS, 100);
+            saveConfig();
           }
       }
        else {
@@ -203,7 +208,8 @@ void setup() {
       Serial.println("IN COLOR POST DATA");
       message = request->getParam("color", true)->value();
       if(message == "FFFFFF"){
-        settings.lastColor = "FFFFFF";
+        message.toCharArray(settings.lastColor,7);
+      //  settings.lastColor = "FFFFFF";
         setColor();
       }else{
       hexToRgb(message);
@@ -301,9 +307,11 @@ void setup() {
   });
 
 // MQTT Stuff
-  if(settings.mqttenable != "on"){ 
+  if(strcmp(settings.mqttenable, "on") == 0){ 
+    Serial.println("in Mqtt Stuff");
     // set LWT
-    strcat(statusTopic, "info");
+     strncpy(statusTopic,settings.baseTopic,512);
+     strcat(statusTopic,"/");
 
     // Initial MQTT Setup
     client.connect(settings.clientName, settings.MQTT_USER, settings.MQTT_PASS, statusTopic, 1, 1, "offline");
@@ -315,6 +323,8 @@ void setup() {
     client.setCallback(callback);
 
     // Subscribe to MQTT Set Topic
+    //settings.baseTopic.toCharArray(charBuf,30);
+    strncpy(charBuf,settings.baseTopic,50);
     strcat(charBuf, "set");
     client.subscribe(charBuf);
     state = "OFF";
@@ -331,7 +341,7 @@ void loop() {
     ESP.restart();
   }
   // MQTT Enabled
-  if(settings.mqttenable != "on"){  
+  if(strcmp(settings.mqttenable, "on") == 0){  
     long now = millis();
     if (!client.connected()) {
       if (now - lastReconnectAttempt > 5000) {
@@ -357,8 +367,8 @@ void loop() {
   checkState();
 
 //Handle reboot if needed and post about it
-  if (uptime > 2000000000) {
-    if(*settings.MQTT_SERVER){
+  if (uptime > 1000000000) {
+    if(sizeof(settings.MQTT_SERVER) > 0){
       mqtt.publish(String(settings.baseTopic) + "info", "restart", true);
     }
     ESP.restart();

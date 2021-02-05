@@ -22,12 +22,11 @@
 long lastReconnectAttempt = 0;
 long lastUpdate = 0;
 WiFiClient espClient;
-PubSubClient client(*settings.MQTT_SERVER, 1883, callback, espClient);
+PubSubClient client(settings.MQTT_SERVER, 1883, callback, espClient);
 PubSubClientTools mqtt(client);
 char ipAdd[20];
-char macAdd[30];
-char statusTopic[50];
 char buffer[512];
+char macAdd[30];
 StaticJsonDocument<200> doc;
 
 

@@ -47,22 +47,14 @@ bool setColor(int r, int g, int b, int w, int brightness) {
   analogWrite(GREENPIN, green);
   analogWrite(BLUEPIN, blue);
   analogWrite(WHITEPIN, white);
-  // Store last color value
-  settings.lastRed = r;
-  settings.lastGreen = g;
-  settings.lastBlue = b;
-  settings.lastWhite = w;
+
   saveConfig();
-  // Serial.println("Set color to: ");
-  // Serial.println(*settings.lastRed);
-  // Serial.println(*settings.lastGreen);
-  // Serial.println(*settings.lastBlue);
-  // Serial.println(*settings.lastWhite);
+
   return true;
 }
 String getColor(){
   Serial.println("IN GET COLOR");
-  if((settings.lastColor).length() > 0){
+  if(strcmp(settings.lastColor, "FFFFFF") == 0){
     return settings.lastColor;
   }else{
     return "FFFFFF";
@@ -79,15 +71,16 @@ bool checkState() {
 }
 
 void hexToRgb(String hex){
-  settings.lastColor = hex;
+  // lastColor = hex;
+  hex.toCharArray(settings.lastColor,7);
   saveConfig();
   int number = (int) strtol( &hex[0], NULL, 16);
       rgb[0] = number >> 16;
       rgb[1] = number >> 8 & 0xFF;
       rgb[2] = number & 0xFF;
-  // Serial.println(rgb[0]);
-  // Serial.println(rgb[1]);
-  // Serial.println(rgb[2]);
+   Serial.println(rgb[0]);
+   Serial.println(rgb[1]);
+   Serial.println(rgb[2]);
 }
 
 #endif
