@@ -31,26 +31,30 @@ void loadConfig() {
 
   // Deserialize the JSON document
   DeserializationError error = deserializeJson(doc, file);
-  if (error)
-    Serial.println(F("Failed to read file, using default configuration"));
-
+  if (!error){
   // Copy values from the JsonDocument to the Config
-  const char* MQTT_USER = doc["MQTT_USER"];
-  const char* MQTT_PASS = doc["MQTT_PASS"];
-  const char* MQTT_SERVER = doc["MQTT_SERVER"];
-  const char* baseTopic = doc["baseTopic"];
-  const char* clientName = doc["clientName"];
-  const char* mqttenable = doc["mqttenable"];
-  const char* lastColor = doc["lastColor"];
-  file.close();
+    const char* MQTT_USER = doc["MQTT_USER"];
+    const char* MQTT_PASS = doc["MQTT_PASS"];
+    const char* MQTT_SERVER = doc["MQTT_SERVER"];
+    const char* baseTopic = doc["baseTopic"];
+    const char* clientName = doc["clientName"];
+    const char* mqttenable = doc["mqttenable"];
+    const char* lastColor = doc["lastColor"];
+    const int brightness = doc["brightness"];
+    file.close();
 
-  strcpy(settings.MQTT_USER, const_cast<char*>(MQTT_USER) );
-  strcpy(settings.MQTT_PASS, const_cast<char*>(MQTT_PASS) );
-  strcpy(settings.MQTT_SERVER, const_cast<char*>(MQTT_SERVER));
-  strcpy(settings.baseTopic, const_cast<char*>(baseTopic) );
-  strcpy(settings.clientName, const_cast<char*>(clientName));
-  strcpy(settings.mqttenable, const_cast<char*>(mqttenable));
-  strcpy(settings.lastColor, const_cast<char*>(lastColor));
+    strcpy(settings.MQTT_USER, const_cast<char*>(MQTT_USER) );
+    strcpy(settings.MQTT_PASS, const_cast<char*>(MQTT_PASS) );
+    strcpy(settings.MQTT_SERVER, const_cast<char*>(MQTT_SERVER));
+    strcpy(settings.baseTopic, const_cast<char*>(baseTopic) );
+    strcpy(settings.clientName, const_cast<char*>(clientName));
+    strcpy(settings.mqttenable, const_cast<char*>(mqttenable));
+    strcpy(settings.lastColor, const_cast<char*>(lastColor));
+    settings.brightness = brightness;
+    }
+  else{
+    Serial.println(F("Failed to read file, using default configuration"));
+  }
 
 }
 
@@ -78,6 +82,7 @@ void saveConfig() {
   doc["clientName"] = settings.clientName;
   doc["mqttenable"] = settings.mqttenable;
   doc["lastColor"] = settings.lastColor;
+  doc["brightness"] = settings.brightness;
 
   // Serialize JSON to file
   if (serializeJson(doc, file) == 0) {
@@ -89,14 +94,7 @@ void saveConfig() {
 }
 
 
-// void loadConfig() {
-// // Loads configuration from Littlefs into RAM
-//   EEPROM.begin(512);
-//   EEPROM.get(64, settings);
-//   Serial.println("Loading Data");
-//   EEPROM.end();
-//   Serial.println(mqttenable);
-// }
+
 
 
 // Dynamic Callbacks
@@ -116,6 +114,8 @@ String processor(const String& var){
     return String(settings.MQTT_PASS);  
   }else if (var == "MQTT"){
     return String(settings.mqttenable);
+  }else if (var == "BRIGHTNESS"){
+    return String(settings.brightness);
   }else if (var == "LCOLOR"){
     if(strcmp(settings.lastColor, "FFFFFF") == 0){
       return settings.lastColor;

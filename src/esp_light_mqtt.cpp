@@ -16,9 +16,7 @@
 #ifndef _esp_light_mqtt
 #define _esp_light_mqtt
 #include "config.h"
-//#include <PubSubClient.h>
-//#include <PubSubClientTools.h>
-//#include <ArduinoJson.h>
+
 long lastReconnectAttempt = 0;
 long lastUpdate = 0;
 WiFiClient espClient;

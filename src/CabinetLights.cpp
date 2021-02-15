@@ -30,11 +30,12 @@ int uptime;
 bool shouldReboot;
 persistData settings;
 char statusTopic[512];
+uint32 chipID = system_get_chip_id();
 
 
 
 //  Setup Debugging
-#define DEBUG true  //set to true for debug output, false for no debug ouput
+#define DEBUG false  //set to true for debug output, false for no debug ouput
 #ifdef DEBUG
   #define Serial Serial
 #else
@@ -55,15 +56,40 @@ void setup() {
   pinMode(GREENPIN, OUTPUT);
   pinMode(BLUEPIN, OUTPUT);
   pinMode(WHITEPIN, OUTPUT);
+  pinMode(LED_BUILTIN, OUTPUT);
+
+  // Set up LittleFS
+  Serial.println("Mount LittleFS");
+  if (!LittleFS.begin()) {
+    Serial.println("LittleFS mount failed");
+    return;
+  }
 
 
+ // Load Previous Settings
+  loadConfig();
+  if(strlen(settings.clientName) < 1){
+    sprintf(settings.clientName,"%u", chipID);
+  }
 
 
   //WiFiManager
   //set callback that gets called when connecting to previous WiFi fails, and enters Access Point mode
+  if(strlen(settings.clientName) > 0){
+    
+    wifi_station_set_hostname(const_cast<char*>(settings.clientName));
+  }else{
+    wifi_station_set_hostname("RGBW_LED");
+  }
+
+  AsyncWiFiManagerParameter custom_text("<p>RGBW LED Controller</p>");
+  wifiManager.addParameter(&custom_text);
+  wifiManager.setRemoveDuplicateAPs(true);
   wifiManager.setAPCallback(configModeCallback);
+  blinkLed(1000);
   wifiManager.setConfigPortalTimeout(180);
   wifiManager.autoConnect("LEDController");
+
  if(!wifiManager.autoConnect()) {
     Serial.println("failed to connect and hit timeout");
     //reset and try again, or maybe put it to deep sleep
@@ -74,6 +100,7 @@ void setup() {
 
   //if you get here you have connected to the WiFi
   Serial.println("connected...winning");
+  blinkLed(0);
   String ip = WiFi.localIP().toString();
   ip.toCharArray(ipAdd, 20);
   String mac = WiFi.macAddress();
@@ -88,21 +115,6 @@ void setup() {
 
 
 
-
-  // Set up LittleFS
-  Serial.println("Mount LittleFS");
-  if (!LittleFS.begin()) {
-    Serial.println("LittleFS mount failed");
-    return;
-  }
-
-
-
-
- // Load Previous Settings
-  loadConfig();
-  Serial.println(settings.mqttenable);
-  Serial.println(settings.MQTT_SERVER);
 // Web Server Stuff
 
   server.begin();
@@ -191,6 +203,19 @@ void setup() {
        else {
           message = "No USERNAME message sent";
       }
+      if (request->hasParam("BRIGHTNESS", true)) {
+          Serial.println("IN BRIGHTNESS PARAM");
+          message = request->getParam("BRIGHTNESS", true)->value();
+          Serial.println(message);
+          Serial.println(message.length());
+          if(message.length() > 0){
+            settings.brightness = message.toInt();
+            saveConfig();
+          }
+      }
+       else {
+          message = "No BRIGHTNESS message sent";
+      }
       if (request->hasParam("PASS", true)) {
           Serial.println("IN PASS PARAM");
           message = request->getParam("PASS", true)->value();
@@ -217,7 +242,7 @@ void setup() {
       // for(int i = 0; i<3; i++){
       //   Serial.println(rgb[i]);
       // }
-      setColor(rgb[0], rgb[1], rgb[2], 0, 255);
+      setColor(rgb[0], rgb[1], rgb[2], 0, settings.brightness);
       
       }
     }

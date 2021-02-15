@@ -16,38 +16,24 @@ body {
 .bg-2 {
     background-color: #696969;
     color: #ffffff;
-    display: block;
+    display: none;
 }
-
+#HOSTNAME {
+    width: 20%;
+    margin: auto;
+}
 .bg-3 {
+    display: none;
     background-color: #696969;
     color: #ffffff;
-    display: block;
 }
 .colorForm{
     color: white;
 }
 
 .container-fluid {
-    padding-top: 70px;
-    padding-bottom: 70px;
-}
-.mqttenable{
-
-}
-.navbar {
-    background-color: #fff;
     padding-top: 10px;
     padding-bottom: 10px;
-    border: 0;
-    border-radius: 0;
-    margin-bottom: 0;
-    font-size: 14px;
-    letter-spacing: 5px;
-}
-
-.navbar-nav li a:hover {
-    color: #1abc9c !important;
 }
 
 .margin {
@@ -56,4 +42,59 @@ body {
 .bg-4 {
     background-color: #2f2f2f;
     color: #ffffff;
+    position: sticky;
+    bottom: 0;
 }
+#dialog-confirm{
+    height: auto;
+    width: 400px;
+    display: none;
+    z-index: 101;
+}
+#myRange {
+    width: 86%;
+}
+#settingToggle{
+    position: fixed;
+    top: 0;
+    right: 0;
+}
+.slidecontainer {
+    width: 25%; /* Width of the outside container */
+    margin: auto;
+  }
+  
+  /* The slider itself */
+  .slider {
+    -webkit-appearance: none;  /* Override default CSS styles */
+    appearance: none;
+    width: 100%; /* Full-width */
+    height: 25px; /* Specified height */
+    background: #d3d3d3; /* Grey background */
+    outline: none; /* Remove outline */
+    opacity: 0.7; /* Set transparency (for mouse-over effects on hover) */
+    -webkit-transition: .2s; /* 0.2 seconds transition on hover */
+    transition: opacity .2s;
+  }
+  
+  /* Mouse-over effects */
+  .slider:hover {
+    opacity: 1; /* Fully shown on mouse-over */
+  }
+  
+  /* The slider handle (use -webkit- (Chrome, Opera, Safari, Edge) and -moz- (Firefox) to override default look) */
+  .slider::-webkit-slider-thumb {
+    -webkit-appearance: none; /* Override default look */
+    appearance: none;
+    width: 25px; /* Set a specific slider handle width */
+    height: 25px; /* Slider handle height */
+    background: #4CAF50; /* Green background */
+    cursor: pointer; /* Cursor on hover */
+  }
+  
+  .slider::-moz-range-thumb {
+    width: 25px; /* Set a specific slider handle width */
+    height: 25px; /* Slider handle height */
+    background: #4CAF50; /* Green background */
+    cursor: pointer; /* Cursor on hover */
+  }
