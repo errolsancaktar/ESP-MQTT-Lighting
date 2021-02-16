@@ -79,7 +79,7 @@ void setup() {
   //set callback that gets called when connecting to previous WiFi fails, and enters Access Point mode
   if(strlen(settings.clientName) > 0){
     
-    wifi_station_set_hostname(const_cast<char*>(settings.clientName));
+    wifi_station_set_hostname(settings.clientName);
   }else{
     wifi_station_set_hostname("RGBW_LED");
   }
@@ -221,6 +221,19 @@ void setup() {
       }
        else {
           message = "No BRIGHTNESS message sent";
+      }
+      if (request->hasParam("HOSTNAME", true)) {
+          Serial.println("IN HOSTNAME PARAM");
+          message = request->getParam("HOSTNAME", true)->value();
+          Serial.println(message);
+          Serial.println(message.length());
+          if(message.length() > 0){
+            message.toCharArray(settings.clientName, 100);
+            saveConfig();
+          }
+      }
+       else {
+          message = "No Hostname message sent";
       }
       if (request->hasParam("PASS", true)) {
           Serial.println("IN PASS PARAM");

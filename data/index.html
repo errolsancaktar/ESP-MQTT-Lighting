@@ -54,13 +54,13 @@
     <div class="container-fluid bg-3 text-center settings">
         <div class="bg-3">
             <label for="mqtt">MQTT Enabled: </label>
-                <form action="/post" method="POST" id="mqttform">
+                
                 <input type="checkbox" id="MQTT" value="%MQTT%">
         </div>
         <div class="container-fluid bg-2 text-center settings">
 
             <h3>MQTT Settings</h3>
-
+            <form action="/post" method="POST" id="mqttform">
             <div class="row">
                     <div class="col-sm">
                         <label for="SERVER"> MQTT Server Address:</label>
@@ -159,7 +159,7 @@
                 });
             });
 
-        // console.log("%MQTT%");
+         console.log("%MQTT%");
         // console.log("%LCOLOR%");
         $('#resetWifi').change(function() { 
             if ($("#resetWifi").is(":checked"))  {
@@ -187,7 +187,7 @@
                 };
             });
     
-        
+    });   
         if("%MQTT%" == "on"){ //if eeprom settings have mqtt enabled set correct state
             $(".bg-2").show();
             $( "#MQTT" ).prop( "checked", true );
@@ -256,7 +256,7 @@
             });        
         curColor();
         });
-    });
+
 
 </script>
 <footer class="container-fluid bg-4 text-center">

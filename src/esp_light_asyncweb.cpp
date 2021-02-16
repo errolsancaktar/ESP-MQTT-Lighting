@@ -83,6 +83,7 @@ void saveConfig() {
   doc["mqttenable"] = settings.mqttenable;
   doc["lastColor"] = settings.lastColor;
   doc["brightness"] = settings.brightness;
+  
 
   // Serialize JSON to file
   if (serializeJson(doc, file) == 0) {
@@ -114,6 +115,8 @@ String processor(const String& var){
     return String(settings.MQTT_PASS);  
   }else if (var == "MQTT"){
     return String(settings.mqttenable);
+  }else if (var == "HOSTNAME"){
+    return String(settings.clientName);
   }else if (var == "BRIGHTNESS"){
     return String(settings.brightness);
   }else if (var == "LCOLOR"){
