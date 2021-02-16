@@ -35,7 +35,7 @@ uint32 chipID = system_get_chip_id();
 
 
 //  Setup Debugging
-#define DEBUG false  //set to true for debug output, false for no debug ouput
+#define DEBUG true  //set to true for debug output, false for no debug ouput
 #ifdef DEBUG
   #define Serial Serial
 #else
@@ -57,6 +57,7 @@ void setup() {
   pinMode(BLUEPIN, OUTPUT);
   pinMode(WHITEPIN, OUTPUT);
   pinMode(LED_BUILTIN, OUTPUT);
+  digitalWrite(LED_BUILTIN, HIGH);
 
   // Set up LittleFS
   Serial.println("Mount LittleFS");
@@ -70,6 +71,7 @@ void setup() {
   loadConfig();
   if(strlen(settings.clientName) < 1){
     sprintf(settings.clientName,"%u", chipID);
+    Serial.println(settings.clientName);
   }
 
 
@@ -85,11 +87,10 @@ void setup() {
   AsyncWiFiManagerParameter custom_text("<p>RGBW LED Controller</p>");
   wifiManager.addParameter(&custom_text);
   wifiManager.setRemoveDuplicateAPs(true);
+  wifiManager.setMinimumSignalQuality(10);
   wifiManager.setAPCallback(configModeCallback);
-  blinkLed(1000);
   wifiManager.setConfigPortalTimeout(180);
   wifiManager.autoConnect("LEDController");
-
  if(!wifiManager.autoConnect()) {
     Serial.println("failed to connect and hit timeout");
     //reset and try again, or maybe put it to deep sleep
@@ -100,7 +101,8 @@ void setup() {
 
   //if you get here you have connected to the WiFi
   Serial.println("connected...winning");
-  blinkLed(0);
+  ticker.detach();
+  digitalWrite(LED, HIGH);
   String ip = WiFi.localIP().toString();
   ip.toCharArray(ipAdd, 20);
   String mac = WiFi.macAddress();
@@ -109,7 +111,10 @@ void setup() {
 
   // Wait for connection
   while (WiFi.status() != WL_CONNECTED) {
+    digitalWrite(LED_BUILTIN,LOW);
     delay(500);
+    digitalWrite(LED_BUILTIN,HIGH);
+
     Serial.printf(".");
   }
 
@@ -203,6 +208,7 @@ void setup() {
        else {
           message = "No USERNAME message sent";
       }
+    }
       if (request->hasParam("BRIGHTNESS", true)) {
           Serial.println("IN BRIGHTNESS PARAM");
           message = request->getParam("BRIGHTNESS", true)->value();
@@ -228,13 +234,17 @@ void setup() {
        else {
           message = "No PASS message sent";
       }
-   //}  
+    if (request->hasParam("wifiReset", true)) {
+          Serial.println("Wifi Reset Called");
+          if((request->getParam("wifiReset", true)->value()) == "true"){
+            resetWifi();
+          }
+      }
     if(request->hasParam("color", true)){
       Serial.println("IN COLOR POST DATA");
       message = request->getParam("color", true)->value();
       if(message == "FFFFFF"){
         message.toCharArray(settings.lastColor,7);
-      //  settings.lastColor = "FFFFFF";
         setColor();
       }else{
       hexToRgb(message);
@@ -248,7 +258,7 @@ void setup() {
     }
      Serial.println(message);
     request->redirect("/");
-    }
+   
   });
 
 // ---------- Firmaware Update  ---------- //

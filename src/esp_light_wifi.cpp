@@ -18,6 +18,15 @@
 #include "config.h"
 #include <ESPAsyncWiFiManager.h> 
 #include "esp_light_wifi.h"
+Ticker ticker;
+int LED = LED_BUILTIN;
+
+void tick()
+{
+  //toggle state
+  digitalWrite(LED, !digitalRead(LED));     // set pin to the opposite state
+}
+
 
 // Setup Wifi and AP Mode
 void configModeCallback (AsyncWiFiManager *wifiManager) {
@@ -25,6 +34,12 @@ void configModeCallback (AsyncWiFiManager *wifiManager) {
   Serial.println(WiFi.softAPIP());
   //if you used auto generated SSID, print it
   Serial.println(wifiManager->getConfigPortalSSID());
+  ticker.attach(0.2, tick);
 }
-
+void resetWifi(){
+  Serial.println("Resetting Wifi Credentials");
+  wifiManager.resetSettings();
+  Serial.println("Reset..");
+  ESP.restart();
+}
 #endif

@@ -45,7 +45,7 @@
             <input type="text" id="color" />
             <div class="slidecontainer" >
                 <h3 style="{color:000000}">Brightness</h3>
-                <input type="range" min="1" max="100" value="%BRIGHTNESS%" class="slider" id="myRange">
+                <input type="range" min="1" max="100" value="%BRIGHTNESS%" class="slider" id="brightness">
               </div>
         </form>
         <button id="settingToggle" class="btn-dark btn-md btn-outline-warning">Settings</button>
@@ -150,7 +150,15 @@
                 console.log("off")
 
             }
-        });
+        })
+        $("#brightness").change(function(){
+            $.ajax({    
+                    url: '/post',
+                    type: 'POST',
+                    data: { "BRIGHTNESS": $("#brightness").val() }
+                });
+            });
+
         // console.log("%MQTT%");
         // console.log("%LCOLOR%");
         $('#resetWifi').change(function() { 
@@ -161,10 +169,14 @@
                     width: 400,
                     modal: true,
                     buttons: {
-                    "Reset Wifi?": function() {
-                        // Add in Reset Function    <-----------------------------------------------------------
+                      "Reset Wifi?": function() {
                         $( "#resetWifi" ).prop( "checked", false );
                         $( this ).dialog( "close" );
+                        $.ajax({
+                            url: '/post',
+                            type: 'POST',
+                            data: { "wifiReset": "true" }
+                       });
                     },
                     Cancel: function() {
                         $( "#resetWifi" ).prop( "checked", false );
@@ -173,7 +185,8 @@
                     }
                 })
                 };
-        });
+            });
+    
         
         if("%MQTT%" == "on"){ //if eeprom settings have mqtt enabled set correct state
             $(".bg-2").show();
@@ -242,7 +255,7 @@
                     async: false
             });        
         curColor();
-        })      
+        });
     });
 
 </script>
