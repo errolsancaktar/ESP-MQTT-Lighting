@@ -36,6 +36,7 @@ void turnOff() {
   analogWrite(WHITEPIN, 0);
   brightness = 0;
   checkState();
+  publishStatus(String(settings.baseTopic) + "info","online","OFF",0,0,0,0,0);
 }
 
 

@@ -251,7 +251,7 @@ void setup() {
             resetWifi();
           }
       }
-      
+
     if(request->hasParam("color", true)){
       Serial.println("IN COLOR POST DATA");
       message = request->getParam("color", true)->value();
@@ -269,14 +269,14 @@ void setup() {
       
       }
     }
-    if(request->hasParam("turnOff", true)){
+    if(request->hasParam("turnoff", true)){
       Serial.println("Turning Off");
       message = request->getParam("turnoff", true)->value();
       if(message == "true"){
         turnOff();
       }
     }
-    if(request->hasParam("rebootMe", true)){
+    if(request->hasParam("rebootme", true)){
       Serial.println("Rebooting");
       message = request->getParam("rebootme", true)->value();
       if(message == "true"){

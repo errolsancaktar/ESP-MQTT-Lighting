@@ -78,7 +78,6 @@ void callback(char* topic, byte* payload, unsigned int length) {
   }
   if(state == "OFF"){
     turnOff();
-    publishStatus(String(settings.baseTopic) + "info","online","OFF",0,0,0,0,0);
   }else if(state == "ON"){
     if (setColor(r, g, b, w, brightness)) {
       publishStatus(String(settings.baseTopic) + "info","online",state,r,g,b,w,brightness);
