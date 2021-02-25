@@ -17,6 +17,7 @@
 #define _esp_light_mqtt
 #include "config.h"
 
+
 long lastReconnectAttempt = 0;
 long lastUpdate = 0;
 WiFiClient espClient;
@@ -26,6 +27,7 @@ char ipAdd[20];
 char buffer[512];
 char macAdd[30];
 StaticJsonDocument<200> doc;
+
 
 
 bool publishStatus(String topic, String pubStatus, String pubState, int pubR, int pubG, int pubB, int pubW, int pubBrightness){
@@ -48,6 +50,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   StaticJsonDocument<400> jsonpl;
   deserializeJson(jsonpl, payload, length);
   JsonObject data = jsonpl.as<JsonObject>();
+  JsonVariant white = data["white_value"];
   if(data.containsKey("state")){
     state = data["state"].as<String>();
     if(state == "ON"){
@@ -61,11 +64,15 @@ void callback(char* topic, byte* payload, unsigned int length) {
   if(data.containsKey("brightness")){
     brightness = data["brightness"];
   }
-  if(data.containsKey("rgb")){
-    r = data["rgb"][0];
-    g = data["rgb"][1];
-    b = data["rgb"][2];
+  if(data.containsKey("color")){
+    r = data["color"]["r"];
+    g = data["color"]["g"];
+    b = data["color"]["b"];
+    if(white.isNull()){
+      w = 0;
+    }
   }
+
   if(data.containsKey("white_value")){
     w = data["white_value"];
   }
@@ -79,9 +86,9 @@ void callback(char* topic, byte* payload, unsigned int length) {
   }
 }
 boolean reconnect() {
+  strncpy(statusTopic,settings.baseTopic,512);
+  strcat(statusTopic,"info");
   if (client.connect(settings.clientName, settings.MQTT_USER, settings.MQTT_PASS, statusTopic, 1, 1, "offline")) {
-
-    //mqtt.publish(baseTopic + "status", "online", true);
     mqtt.publish(String(settings.baseTopic) + "ip", ipAdd, true);
     mqtt.publish(String(settings.baseTopic) + "mac", macAdd, true);
     lastReconnectAttempt = 0;

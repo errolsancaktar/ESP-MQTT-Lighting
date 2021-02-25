@@ -29,7 +29,7 @@ String state;
 int uptime;
 bool shouldReboot;
 persistData settings;
-char statusTopic[512];
+char statusTopic[512] = "";
 uint32 chipID = system_get_chip_id();
 
 
@@ -48,8 +48,6 @@ void setup() {
   Serial.begin(115200);
   Serial.println("Starting Setup Func");
 
-
- 
 
   //Setup LED Pins
   pinMode(REDPIN, OUTPUT);
@@ -253,20 +251,36 @@ void setup() {
             resetWifi();
           }
       }
+      
     if(request->hasParam("color", true)){
       Serial.println("IN COLOR POST DATA");
       message = request->getParam("color", true)->value();
       if(message == "FFFFFF"){
         message.toCharArray(settings.lastColor,7);
-        setColor();
+        setColor(0,0,0,255,settings.brightness);
       }else{
       hexToRgb(message);
       // Serial.println(message);
       // for(int i = 0; i<3; i++){
       //   Serial.println(rgb[i]);
       // }
+      message.toCharArray(settings.lastColor,7);
       setColor(rgb[0], rgb[1], rgb[2], 0, settings.brightness);
       
+      }
+    }
+    if(request->hasParam("turnOff", true)){
+      Serial.println("Turning Off");
+      message = request->getParam("turnoff", true)->value();
+      if(message == "true"){
+        turnOff();
+      }
+    }
+    if(request->hasParam("rebootMe", true)){
+      Serial.println("Rebooting");
+      message = request->getParam("rebootme", true)->value();
+      if(message == "true"){
+        shouldReboot = true;
       }
     }
      Serial.println(message);
@@ -358,13 +372,11 @@ void setup() {
   if(strcmp(settings.mqttenable, "on") == 0){ 
     Serial.println("in Mqtt Stuff");
     // set LWT
-     strncpy(statusTopic,settings.baseTopic,512);
-     strcat(statusTopic,"/");
+    strncpy(statusTopic,settings.baseTopic,512);
+    strncat(statusTopic,"info", 512);
 
     // Initial MQTT Setup
-    client.connect(settings.clientName, settings.MQTT_USER, settings.MQTT_PASS, statusTopic, 1, 1, "offline");
-  //  mqtt.publish(baseTopic + "status", "online", true);
-    mqtt.publish(String(settings.baseTopic) + "ip", ipAdd, true);
+    client.connect(settings.clientName, settings.MQTT_USER, settings.MQTT_PASS, statusTopic, 1, 1,"offline");
     mqtt.publish(String(settings.baseTopic) + "mac", macAdd, true);
 
     // Define Callback func
@@ -373,8 +385,9 @@ void setup() {
     // Subscribe to MQTT Set Topic
     //settings.baseTopic.toCharArray(charBuf,30);
     strncpy(charBuf,settings.baseTopic,50);
-    strcat(charBuf, "set");
+    strncat(charBuf, "set", 50);
     client.subscribe(charBuf);
+    //mqtt.publish(String(settings.baseTopic) + "test", (String)charBuf);
     state = "OFF";
     publishStatus(String(settings.baseTopic) + "info", "online", state,0,0,0,0,0);
     uptime = millis();
@@ -408,6 +421,8 @@ void loop() {
       mqtt.publish(String(settings.baseTopic) + "uptime", (String)uptime);
       checkState();
       publishStatus(String(settings.baseTopic) + "info", "online",state,r,g,b,w,brightness);
+      mqtt.publish(String(settings.baseTopic) + "ip", ipAdd, true);
+
       lastUpdate = now;
     }
   }

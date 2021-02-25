@@ -41,15 +41,19 @@ void turnOff() {
 
 bool setColor(int r, int g, int b, int w, int brightness) {
   Serial.println("IN SET COLOR");
+
   // Convert for Lights in RGB
   int red = r * brightness / 100;
   int green = g * brightness / 100;
   int blue = b * brightness / 100;
   int white = w * brightness / 100;
+  state = "ON";
   analogWrite(REDPIN, red);
   analogWrite(GREENPIN, green);
   analogWrite(BLUEPIN, blue);
   analogWrite(WHITEPIN, white);
+  publishStatus(String(settings.baseTopic) + "info","online",state,r,g,b,w,brightness);
+
 
   saveConfig();
 
